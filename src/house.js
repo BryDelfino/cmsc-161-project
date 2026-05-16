@@ -1,5 +1,3 @@
-"use strict";
-
 class House extends Node {
   constructor(gl, solidRes, texRes, wallTexture) {
     super();
