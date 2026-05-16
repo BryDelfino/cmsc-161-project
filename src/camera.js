@@ -1,7 +1,7 @@
 class Camera {
   constructor(canvas) {
-    this.position = vec3.fromValues(0, 0, 5);
-    this.yaw = -Math.PI / 2;
+    this.position = vec3.fromValues(0, 2, 5);
+    this.yaw = -Math.PI * 1.5;
     this.pitch = 0;
     this.viewMatrix = mat4.create();
     this.projectionMatrix = mat4.create();
@@ -23,15 +23,53 @@ class Camera {
     });
   }
 
-  update(deltaTime) {
+  update(deltaTime, walls = []) {
     const moveSpeed = 5 * deltaTime;
     const forward = vec3.fromValues(Math.cos(this.yaw), 0, Math.sin(this.yaw));
     const right = vec3.fromValues(-Math.sin(this.yaw), 0, Math.cos(this.yaw));
     
-    if (this.keys['w']) vec3.scaleAndAdd(this.position, this.position, forward, moveSpeed);
-    if (this.keys['s']) vec3.scaleAndAdd(this.position, this.position, forward, -moveSpeed);
-    if (this.keys['a']) vec3.scaleAndAdd(this.position, this.position, right, -moveSpeed);
-    if (this.keys['d']) vec3.scaleAndAdd(this.position, this.position, right, moveSpeed);
+    let moveDir = vec3.create();
+    if (this.keys['w']) vec3.add(moveDir, moveDir, forward);
+    if (this.keys['s']) vec3.subtract(moveDir, moveDir, forward);
+    if (this.keys['a']) vec3.subtract(moveDir, moveDir, right);
+    if (this.keys['d']) vec3.add(moveDir, moveDir, right);
+
+    if (vec3.length(moveDir) > 0) {
+      vec3.normalize(moveDir, moveDir);
+      vec3.scale(moveDir, moveDir, moveSpeed);
+      
+      const playerRadius = 0.5;
+
+      // Player Y-range (from feet to just above head)
+      const pMinY = -2.0; 
+      const pMaxY = 0.5;
+
+      // Check X movement
+      let nextX = this.position[0] + moveDir[0];
+      let collisionX = false;
+      for (const w of walls) {
+        if (nextX + playerRadius > w.bounds.minX && nextX - playerRadius < w.bounds.maxX &&
+            this.position[2] + playerRadius > w.bounds.minZ && this.position[2] - playerRadius < w.bounds.maxZ &&
+            pMaxY > w.bounds.minY && pMinY < w.bounds.maxY) {
+          collisionX = true;
+          break;
+        }
+      }
+      if (!collisionX) this.position[0] = nextX;
+
+      // Check Z movement
+      let nextZ = this.position[2] + moveDir[2];
+      let collisionZ = false;
+      for (const w of walls) {
+        if (this.position[0] + playerRadius > w.bounds.minX && this.position[0] - playerRadius < w.bounds.maxX &&
+            nextZ + playerRadius > w.bounds.minZ && nextZ - playerRadius < w.bounds.maxZ &&
+            pMaxY > w.bounds.minY && pMinY < w.bounds.maxY) {
+          collisionZ = true;
+          break;
+        }
+      }
+      if (!collisionZ) this.position[2] = nextZ;
+    }
   }
 
   getProjectionMatrix(gl) {
