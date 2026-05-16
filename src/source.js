@@ -71,7 +71,8 @@ function main() {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 
-  const floor = new Floor(gl, texProgram, texLocs, floorTexture);
+  const floorSize = 15;
+  const floor = new Floor(gl, texProgram, texLocs, floorTexture, floorSize);
 
   let then = 0;
   function render(time) {

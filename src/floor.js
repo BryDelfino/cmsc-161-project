@@ -11,8 +11,8 @@ class Floor extends TexturedMeshNode {
     const uvBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-      0, 0,  10, 0,  10, 10,
-      0, 0,  10, 10,  0, 10,
+      0, 0,  s/2, 0,  s/2, s/2,
+      0, 0,  s/2, s/2,  0, s/2,
     ]), gl.STATIC_DRAW);
 
     super({
