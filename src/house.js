@@ -29,7 +29,16 @@ class House extends Node {
       { pos: [13, 4, -9],     scale: [0.2, 3, 3],    tex: true }, // Window header (width 3)
       { pos: [13, 0, 2.75],   scale: [0.2, 7, 20.5], tex: true }, // Rest of wall
 
-      { pos: [-13, 0, 0], scale: [0.2, 7, 26], tex: true }, // West
+      // --- West Wall (Windows for Living Room and Kitchen) ---
+      { pos: [-13, 0, -11.75], scale: [0.2, 7, 2.5], tex: true }, // Corner of Kitchen
+      { pos: [-13, 0, -9],     scale: [0.2, 1, 3],    tex: true }, // Kitchen Window Sill
+      { pos: [-13, 4, -9],     scale: [0.2, 3, 3],    tex: true }, // Kitchen Window Header
+      { pos: [-13, 0, -0.5],   scale: [0.2, 7, 14],   tex: true }, // Rest of the Wall
+      { pos: [-13, 0, 8],      scale: [0.2, 1, 3],    tex: true }, // Living Room Window Sill     
+      { pos: [-13, 4, 8],      scale: [0.2, 3, 3],    tex: true }, // Living Room Window Header
+      { pos: [-13, 0, 11.25],  scale: [0.2, 7, 3.5],  tex: true }, // Corner of Living Room
+
+
 
       // --- Living Room Divider (Doorway on Left) ---
       { pos: [-12, 0, 3],  scale: [0.2, 7, 2],  rot: Math.PI/2, color: [0.9, 0.8, 0.7, 1.0] }, 
