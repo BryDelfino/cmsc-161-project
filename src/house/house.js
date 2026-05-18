@@ -346,6 +346,10 @@ class House extends Node {
     backDoor.setParent(this);
     backDoor.setTransform([-9.5, 0, -13], 0);
     this.doors.push(backDoor);
+
+    // --- Front Porch (Located at X = 0, Z = 13.0, outside the South entrance door) ---
+    this.porch = new Porch(gl, solidRes, texRes, this.wallTextures.outside);
+    this.porch.setParent(this);
   }
 
   update(deltaTime) {
@@ -382,6 +386,9 @@ class House extends Node {
 
     // Render floor slab with floor.jpg texture
     this.floor.draw(gl, viewProjection, this.floorTexture);
+
+    // Render Front Porch (Deck platform, railings, and steps leading to ground)
+    this.porch.draw(gl, viewProjection);
 
     // Render all opaque parts of interactable doors first
     this.doors.forEach(door => {
