@@ -53,7 +53,9 @@ const texFragmentShaderSource = `
   precision mediump float;
   varying vec2 v_texcoord;
   uniform sampler2D u_texture;
+  uniform vec2 u_uvScale;
+  uniform vec2 u_uvOffset;
   void main() {
-    gl_FragColor = texture2D(u_texture, v_texcoord);
+    gl_FragColor = texture2D(u_texture, fract((v_texcoord * u_uvScale) + u_uvOffset));
   }
 `;
