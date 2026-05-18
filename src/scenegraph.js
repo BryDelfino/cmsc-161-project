@@ -98,6 +98,13 @@ class TexturedMeshNode extends Node {
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(locs.tex, 0);
 
+    if (locs.uvScale) {
+      gl.uniform2fv(locs.uvScale, [1.0, 1.0]);
+    }
+    if (locs.uvOffset) {
+      gl.uniform2fv(locs.uvOffset, [0.0, 0.0]);
+    }
+
     const mvpMatrix = mat4.multiply(mat4.create(), projectionViewMatrix, this.worldMatrix);
     gl.uniformMatrix4fv(locs.matrix, false, mvpMatrix);
 
