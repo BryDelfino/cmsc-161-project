@@ -1,4 +1,3 @@
-const { mat4, vec3 } = glMatrix;
 
 function createShader(gl, type, source) {
   const shader = gl.createShader(type);

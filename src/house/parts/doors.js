@@ -1,4 +1,3 @@
-const { mat4, vec3 } = glMatrix;
 
 class Door extends Node {
   constructor(gl, solidRes, texRes, type, woodTexture, screenMeshTexture, initialOpen = false) {
