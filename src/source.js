@@ -33,6 +33,7 @@ function main() {
 
   // 1. SETUP PROGRAMS
   const skyboxProgram = createProgram(gl, vertexShaderSource, fragmentShaderSource);
+  const solidProgram = createProgram(gl, solidVertexShaderSource, solidFragmentShaderSource);
   const texProgram = createProgram(gl, texVertexShaderSource, texFragmentShaderSource);
 
   // 2. LOOKUP LOCATIONS
@@ -42,11 +43,19 @@ function main() {
     viewInv: gl.getUniformLocation(skyboxProgram, "u_viewDirectionProjectionInverse"),
   };
 
+  const solidLocs = {
+    pos: gl.getAttribLocation(solidProgram, "a_position"),
+    matrix: gl.getUniformLocation(solidProgram, "u_matrix"),
+    color: gl.getUniformLocation(solidProgram, "u_color"),
+  };
+
   const texLocs = {
     pos: gl.getAttribLocation(texProgram, "a_position"),
     uv: gl.getAttribLocation(texProgram, "a_texcoord"),
     matrix: gl.getUniformLocation(texProgram, "u_matrix"),
     tex: gl.getUniformLocation(texProgram, "u_texture"),
+    uvScale: gl.getUniformLocation(texProgram, "u_uvScale"),
+    uvOffset: gl.getUniformLocation(texProgram, "u_uvOffset"),
   };
 
   // 3. INITIALIZE COMPONENTS
@@ -62,17 +71,79 @@ function main() {
   ]);
 
   // Create Floor Texture
+  // --- FLOOR TEXTURE (Load from file) ---
   const floorTexture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, floorTexture);
-  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 2, 2, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, new Uint8Array([190, 255, 255, 190]));
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  
+  // Fill with a solid brown while we wait for the image to load
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([101, 67, 33, 255]));
+
+  const floorImage = new Image();
+  floorImage.onload = () => {
+    gl.bindTexture(gl.TEXTURE_2D, floorTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, floorImage);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  };
+  floorImage.src = "../assets/textures/ground_dirt.jpg";
+
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
 
-  const floorSize = 15;
+  const floorSize = 100;
   const floor = new Floor(gl, texProgram, texLocs, floorTexture, floorSize);
+
+  function isPowerOf2(value) {
+    return (value & (value - 1)) === 0;
+  }
+
+  // Helper to load JPEG textures asynchronously with a solid color fallback
+  function loadTexture(gl, src, defaultColor) {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(defaultColor));
+
+    const img = new Image();
+    img.onload = () => {
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+
+      // Check if texture dimensions are power of two
+      if (isPowerOf2(img.width) && isPowerOf2(img.height)) {
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+      } else {
+        // Safe NPOT settings for WebGL 1.0
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      }
+    };
+    img.src = src;
+    return texture;
+  }
+
+  // Load all user requested JPEG textures from assets/textures/
+  const houseTextures = {
+    outside: loadTexture(gl, "../assets/textures/outsidewall.jpg", [220, 220, 220, 255]),
+    floor: loadTexture(gl, "../assets/textures/floor.jpg", [139, 69, 19, 255]),
+    livingRoom: loadTexture(gl, "../assets/textures/living_room.jpg", [240, 230, 210, 255]),
+    dining: loadTexture(gl, "../assets/textures/dining.jpg", [230, 220, 200, 255]),
+    kitchen: loadTexture(gl, "../assets/textures/kitchen.jpg", [220, 240, 240, 255]),
+  };
+
+  // --- HOUSE ---
+  const house = new House(gl, 
+    { program: solidProgram, locs: solidLocs }, // Solid Resources
+    { program: texProgram, locs: texLocs },     // Texture Resources
+    houseTextures
+  );
 
   let then = 0;
   function render(time) {
@@ -80,8 +151,8 @@ function main() {
     const deltaTime = time - then;
     then = time;
 
-    // Update Camera
-    camera.update(deltaTime);
+    // Update Camera (with collision)
+    camera.update(deltaTime, house.walls);
 
     // Viewport Setup
     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
@@ -100,6 +171,9 @@ function main() {
     gl.depthFunc(gl.LESS);
     const viewProjection = mat4.multiply(mat4.create(), projectionMatrix, viewMatrix);
     floor.draw(gl, viewProjection);
+
+    // Draw House
+    house.draw(gl, viewProjection);
 
     requestAnimationFrame(render);
   }
