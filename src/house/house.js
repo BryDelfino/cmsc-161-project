@@ -6,6 +6,7 @@ class House extends Node {
     this.visualSolidWalls = [];
     this.wallTextures = wallTextures;
     this.floorTexture = wallTextures.floor;
+    this.screenMeshTexture = wallTextures.screenmesh;
     this.elevation = 1.5;
     this.translate([0, this.elevation, 0]);
 
@@ -31,7 +32,7 @@ class House extends Node {
     };
 
     const wallConfig = [
-      // --- EXTERIOR WALLS (Textured) ---
+      // --- EXTERIOR WALLS ---
       // --- North Wall (Z = -13) ---
       { pos: [-12, 0, -13], scale: [2, 7, 0.2], tex: true },
       { pos: [-9.5, 4, -13], scale: [3, 3, 0.2], tex: true },
@@ -305,7 +306,7 @@ class House extends Node {
       }
     });
 
-    // --- House Ceiling Slab (Solid Paint Color) ---
+    // --- House Ceiling Slab ---
     this.ceiling = new Wall(gl, solidRes.program, solidRes.locs, [217 / 255, 211 / 255, 134 / 255, 1.0]);
     this.ceiling.setParent(this);
     this.ceiling.translate([0, 5, 0]);
@@ -318,6 +319,49 @@ class House extends Node {
     this.floor.scale([26, 0.2, 26]);
     this.floor.uvScale = [26.0 / floorScale, 26.0 / floorScale];
     this.floor.uvOffset = [-13.0 / floorScale, -13.0 / floorScale];
+
+    // --- Doors ---
+    this.doors = [];
+
+    // 1. Front Entrance Door: Solid Oak Wood Door 
+    const frontDoor = new Door(gl, solidRes, texRes, 'screen', this.floorTexture, this.screenMeshTexture);
+    frontDoor.setParent(this);
+    frontDoor.setTransform([0, 0, 13], 0);
+    this.doors.push(frontDoor);
+
+    // 2. Living Room / Dining Divider Door: Wooden Door with Screen
+    const livingRoomDoor = new Door(gl, solidRes, texRes, 'solid', this.floorTexture, this.screenMeshTexture);
+    livingRoomDoor.setParent(this);
+    livingRoomDoor.setTransform([-9.5, 0, 3], 0);
+    this.doors.push(livingRoomDoor);
+
+    // 3. Dining Room / Kitchen Divider Door: Solid Oak Wood Door
+    const kitchenDoor = new Door(gl, solidRes, texRes, 'solid', this.floorTexture, this.screenMeshTexture);
+    kitchenDoor.setParent(this);
+    kitchenDoor.setTransform([-9.5, 0, -5], 0);
+    this.doors.push(kitchenDoor);
+
+    // 4. Back Door: Wooden Door with Screen
+    const backDoor = new Door(gl, solidRes, texRes, 'screen', this.floorTexture, this.screenMeshTexture);
+    backDoor.setParent(this);
+    backDoor.setTransform([-9.5, 0, -13], 0);
+    this.doors.push(backDoor);
+  }
+
+  update(deltaTime) {
+    this.doors.forEach(door => {
+      door.update(deltaTime);
+    });
+  }
+
+  getCollisionWalls() {
+    // Return all static boundaries and dynamic door collision bounds
+    const doorWalls = this.doors.map(door => {
+      return {
+        bounds: door.getCollisionBounds(this.elevation)
+      };
+    });
+    return this.walls.concat(doorWalls);
   }
 
   draw(gl, viewProjection) {
@@ -338,5 +382,17 @@ class House extends Node {
 
     // Render floor slab with floor.jpg texture
     this.floor.draw(gl, viewProjection, this.floorTexture);
+
+    // Render all opaque parts of interactable doors first
+    this.doors.forEach(door => {
+      door.draw(gl, viewProjection, 'opaque');
+    });
+
+    // Then render all transparent screen meshes.
+    gl.depthMask(false);
+    this.doors.forEach(door => {
+      door.draw(gl, viewProjection, 'transparent');
+    });
+    gl.depthMask(true); // Re-enable depth buffer writes
   }
 }

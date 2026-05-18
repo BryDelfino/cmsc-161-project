@@ -1,4 +1,3 @@
-const { mat4, vec3 } = glMatrix;
 
 function createShader(gl, type, source) {
   const shader = gl.createShader(type);
@@ -136,6 +135,7 @@ function main() {
     livingRoom: loadTexture(gl, "../assets/textures/living_room.jpg", [240, 230, 210, 255]),
     dining: loadTexture(gl, "../assets/textures/dining.jpg", [230, 220, 200, 255]),
     kitchen: loadTexture(gl, "../assets/textures/kitchen.jpg", [220, 240, 240, 255]),
+    screenmesh: loadTexture(gl, "../assets/textures/screenmesh.png", [128, 128, 128, 100]),
   };
 
   // --- HOUSE ---
@@ -145,14 +145,44 @@ function main() {
     houseTextures
   );
 
+  // Listen for 'E' keypress to toggle closest interactable door within reach
+  window.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "e") {
+      const playerPos = camera.position;
+      let closestDoor = null;
+      let minDist = 3.5; // Interaction reach distance
+
+      house.doors.forEach(door => {
+        // Door world position: Door is a child of House, so its world pos is offset by House elevation
+        const doorWorldPos = vec3.fromValues(
+          door.position[0],
+          door.position[1] + house.elevation,
+          door.position[2]
+        );
+        const dist = vec3.distance(playerPos, doorWorldPos);
+        if (dist < minDist) {
+          minDist = dist;
+          closestDoor = door;
+        }
+      });
+
+      if (closestDoor) {
+        closestDoor.toggle();
+      }
+    }
+  });
+
   let then = 0;
   function render(time) {
     time *= 0.001;
     const deltaTime = time - then;
     then = time;
 
-    // Update Camera (with collision)
-    camera.update(deltaTime, house.walls);
+    // Advance door swinging animations
+    house.update(deltaTime);
+
+    // Update Camera (with dynamic door and static wall collisions)
+    camera.update(deltaTime, house.getCollisionWalls());
 
     // Viewport Setup
     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
@@ -160,7 +190,38 @@ function main() {
     }
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    
+    // Enable Depth testing and standard alpha blending for semi-transparent objects (screen doors, windows, etc...)
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // Update HUD overlay interaction prompt based on door proximity
+    const promptDiv = document.querySelector("#interaction-prompt");
+    if (promptDiv) {
+      const playerPos = camera.position;
+      let closestDoor = null;
+      let minDist = 3.5;
+      house.doors.forEach(door => {
+        const doorWorldPos = vec3.fromValues(
+          door.position[0],
+          door.position[1] + house.elevation,
+          door.position[2]
+        );
+        const dist = vec3.distance(playerPos, doorWorldPos);
+        if (dist < minDist) {
+          minDist = dist;
+          closestDoor = door;
+        }
+      });
+
+      if (closestDoor) {
+        promptDiv.textContent = `Press [E] to ${closestDoor.isOpen ? "Close" : "Open"} Door`;
+        promptDiv.style.display = "block";
+      } else {
+        promptDiv.style.display = "none";
+      }
+    }
 
     const projectionMatrix = camera.getProjectionMatrix(gl);
     const viewMatrix = camera.getViewMatrix();
@@ -172,7 +233,7 @@ function main() {
     const viewProjection = mat4.multiply(mat4.create(), projectionMatrix, viewMatrix);
     floor.draw(gl, viewProjection);
 
-    // Draw House
+    // Draw House 
     house.draw(gl, viewProjection);
 
     requestAnimationFrame(render);
