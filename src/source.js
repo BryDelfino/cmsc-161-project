@@ -192,7 +192,7 @@ function main() {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
-    // Enable Depth testing and standard alpha blending for the semi-transparent screen doors
+    // Enable Depth testing and standard alpha blending for semi-transparent objects (screen doors, windows, etc...)
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -234,7 +234,7 @@ function main() {
     const viewProjection = mat4.multiply(mat4.create(), projectionMatrix, viewMatrix);
     floor.draw(gl, viewProjection);
 
-    // Draw House (which includes doors)
+    // Draw House 
     house.draw(gl, viewProjection);
 
     requestAnimationFrame(render);
