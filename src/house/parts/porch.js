@@ -184,26 +184,10 @@ class Porch extends Node {
       this.pillars.push(col);
     });
 
-    // --- 4. BUILD THE STEPS (Outside Face Textured) ---
-    // 3 steps leading down from the 5.0-wide opening (X = -2.5 to 2.5) at the front edge (Z = 17.0)
-    const stepCount = 3;
-    const stepWidth = 5.0;
-    const stepHeight = 1.5 / stepCount; // 0.50 units per step
-    const stepDepth = 0.50;            // 0.50 depth per step
-
-    for (let i = 0; i < stepCount; i++) {
-      const step = new Wall(gl, texRes.program, texRes.locs);
-      step.setParent(this);
-      
-      const sHeight = stepHeight;
-      const sY = -2.0 - (i + 1) * stepHeight + stepHeight / 2; // Stepping downwards
-      const sZ = 17.0 + i * stepDepth + stepDepth / 2;          // Stepping outwards
-      
-      step.translate([0, sY, sZ]);
-      step.scale([stepWidth, sHeight, stepDepth]);
-      step.uvScale = [stepWidth / 4.0, stepDepth / 4.0]; // Stretched 2x larger!
-      this.steps.push(step);
-    }
+    // --- 4. BUILD THE STEPS (Solid and gap-free side profile) ---
+    this.steps = new Stairs(gl, texRes, 5.0, 1.5, 3, 0.5, 0.4);
+    this.steps.setParent(this);
+    this.steps.translate([0, 0, 17.0]);
   }
 
   draw(gl, viewProjection) {
@@ -214,6 +198,6 @@ class Porch extends Node {
     this.foundation.draw(gl, viewProjection, this.outsideTexture); // Draw solid underpinning base!
     this.pillars.forEach(col => col.draw(gl, viewProjection, this.outsideTexture));
     this.roof.draw(gl, viewProjection, this.outsideTexture);
-    this.steps.forEach(step => step.draw(gl, viewProjection, this.outsideTexture));
+    this.steps.draw(gl, viewProjection, this.outsideTexture);
   }
 }
