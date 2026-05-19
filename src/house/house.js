@@ -347,15 +347,69 @@ class House extends Node {
     backDoor.setTransform([-9.5, 0, -13], 0);
     this.doors.push(backDoor);
 
-    // --- Front Porch (Located at X = 0, Z = 13.0, outside the South entrance door) ---
+    // --- Front Porch ---
     this.porch = new Porch(gl, solidRes, texRes, this.wallTextures.outside);
     this.porch.setParent(this);
+
+    // --- Windows ---
+    this.windows = [];
+
+    // Window configurations: [x, y, z], rotY
+    const windowConfigs = [
+      // 1. South Wall: Left Window
+      { pos: [-6, 0.5, 13], rot: 0 },
+      // 2. South Wall: Right Window
+      { pos: [6, 0.5, 13], rot: 0 },
+      // 3. East Wall: Kitchen Window
+      { pos: [13, 0.5, -9], rot: Math.PI / 2 },
+      // 4. West Wall: Kitchen Window
+      { pos: [-13, 0.5, -9], rot: -Math.PI / 2 },
+      // 5. West Wall: Living Room Window
+      { pos: [-13, 0.5, 8], rot: -Math.PI / 2 },
+    ];
+
+    windowConfigs.forEach(cfg => {
+      const win = new Window(gl, solidRes, texRes);
+      win.setParent(this);
+      win.setTransform(cfg.pos, cfg.rot);
+      this.windows.push(win);
+    });
+
+    // --- Kitchen Door Back Steps (Solid and gap-free side profile) ---
+    this.kitchenSteps = new Stairs(gl, texRes, 4.0, 1.5, 3, 0.5);
+    this.kitchenSteps.setParent(this);
+    this.kitchenSteps.setTransform([-9.5, 0, -13.0], Math.PI);
+
+    // --- Interior Stairs ---
+    this.interiorStairs = new InteriorStairs(gl, solidRes, texRes);
+    this.interiorStairs.setParent(this);
+    this.interiorStairs.setTransform([12.0, 0, 9.5], Math.PI);
   }
 
   update(deltaTime) {
     this.doors.forEach(door => {
       door.update(deltaTime);
     });
+    // Propagate all local matrix updates down the scenegraph to compute world matrices
+    this.updateWorldMatrix(null);
+  }
+
+  getWalkableNodes() {
+    const list = [];
+    if (this.floor) list.push(this.floor);
+    if (this.porch) {
+      if (this.porch.deck) list.push(this.porch.deck);
+      if (this.porch.steps && this.porch.steps.steps) {
+        list.push(...this.porch.steps.steps);
+      }
+    }
+    if (this.kitchenSteps && this.kitchenSteps.steps) {
+      list.push(...this.kitchenSteps.steps);
+    }
+    if (this.interiorStairs && this.interiorStairs.steps) {
+      list.push(...this.interiorStairs.steps);
+    }
+    return list;
   }
 
   getCollisionWalls() {
@@ -365,7 +419,16 @@ class House extends Node {
         bounds: door.getCollisionBounds(this.elevation)
       };
     });
-    return this.walls.concat(doorWalls);
+    const walls = this.walls.concat(doorWalls);
+    
+    // Add collision for the interior stairs railing/handrail on the open side
+    if (this.interiorStairs && this.interiorStairs.getCollisionBounds) {
+      walls.push({
+        bounds: this.interiorStairs.getCollisionBounds(this.elevation)
+      });
+    }
+    
+    return walls;
   }
 
   draw(gl, viewProjection) {
@@ -390,15 +453,30 @@ class House extends Node {
     // Render Front Porch (Deck platform, railings, and steps leading to ground)
     this.porch.draw(gl, viewProjection);
 
+    // Render Kitchen Back Steps
+    this.kitchenSteps.draw(gl, viewProjection, this.wallTextures.outside);
+
+    // Render Interior Stairs
+    this.interiorStairs.draw(gl, viewProjection, this.wallTextures.livingRoom);
+
     // Render all opaque parts of interactable doors first
     this.doors.forEach(door => {
       door.draw(gl, viewProjection, 'opaque');
+    });
+
+    // Render all opaque parts of windows
+    this.windows.forEach(win => {
+      win.draw(gl, viewProjection, 'opaque');
     });
 
     // Then render all transparent screen meshes.
     gl.depthMask(false);
     this.doors.forEach(door => {
       door.draw(gl, viewProjection, 'transparent');
+    });
+    // Render all transparent window glass panes
+    this.windows.forEach(win => {
+      win.draw(gl, viewProjection, 'transparent');
     });
     gl.depthMask(true); // Re-enable depth buffer writes
   }
