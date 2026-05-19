@@ -181,8 +181,8 @@ function main() {
     // Advance door swinging animations
     house.update(deltaTime);
 
-    // Update Camera (with dynamic door and static wall collisions)
-    camera.update(deltaTime, house.getCollisionWalls());
+    // Update Camera (with dynamic door and static wall collisions, and walkable platforms)
+    camera.update(deltaTime, house.getCollisionWalls(), house.getWalkableNodes());
 
     // Viewport Setup
     if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
