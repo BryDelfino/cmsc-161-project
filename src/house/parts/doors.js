@@ -37,6 +37,12 @@ class Door extends Node {
     this.texturedMeshes = [];
     this.solidMeshes = [];
 
+    // Knob base nodes and positions for rotation animation
+    this.knobBaseF = null;
+    this.knobBaseB = null;
+    this.knobPosF = null;
+    this.knobPosB = null;
+
     // Build the visual parts
     this.buildVisuals(gl);
   }
@@ -68,6 +74,21 @@ class Door extends Node {
     this.hinge.localMatrix = mat4.create();
     mat4.translate(this.hinge.localMatrix, this.hinge.localMatrix, [-this.width / 2, 0, 0]);
     mat4.rotate(this.hinge.localMatrix, this.hinge.localMatrix, this.currentAngle, [0, 1, 0]);
+
+    // Animate doorknobs rotating during latch/unlatch sequence
+    if (this.knobBaseF && this.knobBaseB && this.knobPosF && this.knobPosB) {
+      const p = this.currentAngle / (Math.PI / 2);
+      // Twist the knob by up to 45 degrees (0.8 rad) as the door unlatches, only when opening (this.isOpen is true)
+      const knobAngle = (this.isOpen && p < 0.5) ? Math.sin(p * Math.PI / 0.5) * 0.8 : 0.0;
+
+      this.knobBaseF.localMatrix = mat4.create();
+      mat4.translate(this.knobBaseF.localMatrix, this.knobBaseF.localMatrix, this.knobPosF);
+      mat4.rotate(this.knobBaseF.localMatrix, this.knobBaseF.localMatrix, knobAngle, [0, 0, 1]);
+
+      this.knobBaseB.localMatrix = mat4.create();
+      mat4.translate(this.knobBaseB.localMatrix, this.knobBaseB.localMatrix, this.knobPosB);
+      mat4.rotate(this.knobBaseB.localMatrix, this.knobBaseB.localMatrix, -knobAngle, [0, 0, 1]);
+    }
   }
 
   buildVisuals(gl) {
@@ -119,29 +140,42 @@ class Door extends Node {
       // --- Elegant Brass/Gold Doorknob Assembly for Solid Door ---
       const knobColor = [0.85, 0.65, 0.12, 1.0]; // Elegant Brass/Gold color
 
-      // Front door knob
+      this.knobPosF = [w / 2 - 0.45, 0, t / 2];
+      this.knobPosB = [w / 2 - 0.45, 0, -t / 2];
+
+      this.knobBaseF = new Node();
+      this.knobBaseF.setParent(this.leaf);
+      this.knobBaseF.translate(this.knobPosF);
+
+      this.knobBaseB = new Node();
+      this.knobBaseB.setParent(this.leaf);
+      this.knobBaseB.translate(this.knobPosB);
+
+      // Front door knob shank (parented to rotating base)
       const shankF = new Wall(gl, this.solidRes.program, this.solidRes.locs, knobColor);
-      shankF.setParent(this.leaf);
-      shankF.translate([w / 2 - 0.45, 0, t / 2 + 0.03]);
+      shankF.setParent(this.knobBaseF);
+      shankF.translate([0, 0, 0.03]);
       shankF.scale([0.06, 0.06, 0.08]);
       this.solidMeshes.push(shankF);
 
+      // Front door knob (parented to rotating base)
       const knobF = new Wall(gl, this.solidRes.program, this.solidRes.locs, knobColor);
-      knobF.setParent(this.leaf);
-      knobF.translate([w / 2 - 0.45, 0, t / 2 + 0.07]);
+      knobF.setParent(this.knobBaseF);
+      knobF.translate([0, 0, 0.07]);
       knobF.scale([0.12, 0.12, 0.08]);
       this.solidMeshes.push(knobF);
 
-      // Back door knob
+      // Back door knob shank (parented to rotating base)
       const shankB = new Wall(gl, this.solidRes.program, this.solidRes.locs, knobColor);
-      shankB.setParent(this.leaf);
-      shankB.translate([w / 2 - 0.45, 0, -t / 2 - 0.03]);
+      shankB.setParent(this.knobBaseB);
+      shankB.translate([0, 0, -0.03]);
       shankB.scale([0.06, 0.06, 0.08]);
       this.solidMeshes.push(shankB);
 
+      // Back door knob (parented to rotating base)
       const knobB = new Wall(gl, this.solidRes.program, this.solidRes.locs, knobColor);
-      knobB.setParent(this.leaf);
-      knobB.translate([w / 2 - 0.45, 0, -t / 2 - 0.07]);
+      knobB.setParent(this.knobBaseB);
+      knobB.translate([0, 0, -0.07]);
       knobB.scale([0.12, 0.12, 0.08]);
       this.solidMeshes.push(knobB);
 
@@ -232,50 +266,69 @@ class Door extends Node {
       this.solidMeshes.push(keyholeB);
 
       // --- 2e. Spherical Gold Doorknobs (Raised position) ---
+      this.knobPosF = [w / 2 - 0.32, plateY + 0.07, doorT / 2];
+      this.knobPosB = [w / 2 - 0.32, plateY + 0.07, -doorT / 2];
+
+      this.knobBaseF = new Node();
+      this.knobBaseF.setParent(this.leaf);
+      this.knobBaseF.translate(this.knobPosF);
+
+      this.knobBaseB = new Node();
+      this.knobBaseB.setParent(this.leaf);
+      this.knobBaseB.translate(this.knobPosB);
+
       // Front Golden Knob
       const knobF = new Wall(gl, this.solidRes.program, this.solidRes.locs, goldColor);
-      knobF.setParent(this.leaf);
-      knobF.translate([w / 2 - 0.32, plateY + 0.07, doorT / 2 + 0.07]);
+      knobF.setParent(this.knobBaseF);
+      knobF.translate([0, 0, 0.07]);
       knobF.scale([0.15, 0.15, 0.15]); // Cute round spherical knob
       this.solidMeshes.push(knobF);
 
       // Back Golden Knob
       const knobB = new Wall(gl, this.solidRes.program, this.solidRes.locs, goldColor);
-      knobB.setParent(this.leaf);
-      knobB.translate([w / 2 - 0.32, plateY + 0.07, -(doorT / 2 + 0.07)]);
+      knobB.setParent(this.knobBaseB);
+      knobB.translate([0, 0, -0.07]);
       knobB.scale([0.15, 0.15, 0.15]);
       this.solidMeshes.push(knobB);
     }
   }
 
   getCollisionBounds(houseElevation) {
-    // If the door is open or swing-animating, we make it non-collidable
-    if (this.isOpen || Math.abs(this.currentAngle) > 0.05) {
-      return {
-        minX: 99999, maxX: -99999,
-        minY: 99999, maxY: -99999,
-        minZ: 99999, maxZ: -99999,
-      };
-    }
-
     const cx = this.position[0];
     const cy = this.position[1] + houseElevation;
     const cz = this.position[2];
 
-    const isRotated = Math.abs(this.rotationY - Math.PI / 2) < 0.1 || Math.abs(this.rotationY - Math.PI * 1.5) < 0.1;
+    const theta = this.currentAngle;
+    const rotY = this.rotationY;
+    const w = this.width;
+    const t = this.thickness;
+
+    // Hinge local point [-w/2, 0, 0] transformed to parent space
+    const x1 = cx - (w / 2) * Math.cos(rotY);
+    const z1 = cz + (w / 2) * Math.sin(rotY);
+
+    // Leaf end local point [-w/2 + w * cos(theta), 0, -w * sin(theta)] transformed to parent space
+    const lx = -w / 2 + w * Math.cos(theta);
+    const lz = -w * Math.sin(theta);
+    const x2 = cx + lx * Math.cos(rotY) + lz * Math.sin(rotY);
+    const z2 = cz - lx * Math.sin(rotY) + lz * Math.cos(rotY);
+
+    // Bounds derived from the line segment (with thickness t)
+    const minX = Math.min(x1, x2) - t / 2;
+    const maxX = Math.max(x1, x2) + t / 2;
+    const minZ = Math.min(z1, z2) - t / 2;
+    const maxZ = Math.max(z1, z2) + t / 2;
     
-    // Sized to exactly match the closed door's solid volume
-    const scaleX = isRotated ? 0.2 : this.width;
-    const scaleZ = isRotated ? this.width : 0.2;
-    const scaleY = this.height;
+    const minY = cy - this.height / 2;
+    const maxY = cy + this.height / 2;
 
     return {
-      minX: cx - scaleX / 2,
-      maxX: cx + scaleX / 2,
-      minY: cy - scaleY / 2,
-      maxY: cy + scaleY / 2,
-      minZ: cz - scaleZ / 2,
-      maxZ: cz + scaleZ / 2,
+      minX,
+      maxX,
+      minY,
+      maxY,
+      minZ,
+      maxZ
     };
   }
 
