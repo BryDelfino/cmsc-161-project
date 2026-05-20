@@ -15,10 +15,10 @@ class Stairs extends Node {
       const topYOffset = (i === 0) ? -0.01 : 0.0;
       const topY = -2.0 - i * stepHeight + topYOffset; // -2.01 (Step 1), -2.5 (Step 2), -3.0 (Step 3)
       const h = topY - bottomY;                 // 1.49, 1.0, 0.5
-      
+
       // Extend the highest step backwards if backOverlap is specified to fill any gaps under overhangs
       const currentDepth = (i === 0) ? (stepDepth + backOverlap) : stepDepth;
-      
+
       let sZ;
       if (i === 0) {
         sZ = -backOverlap + currentDepth / 2; // Shift center forward by half of the added depth
@@ -118,7 +118,7 @@ class Sphere extends Node {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
     gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 24, 0);
     gl.enableVertexAttribArray(this.locs.pos);
-    
+
     if (this.locs.uv !== undefined && this.locs.uv !== -1) {
       gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 24, 16);
       gl.enableVertexAttribArray(this.locs.uv);
@@ -150,9 +150,9 @@ class Sphere extends Node {
 }
 
 class InteriorStairs extends Node {
-  constructor(gl, solidRes, texRes, length = 6.5, stepWidth = 7.2, stepCount = 14) {
+  constructor(gl, solidRes, texRes, length = 6.5, stepWidth = 4.5, stepCount = 14) {
     super();
-    
+
     this.length = length;
     this.stepWidth = stepWidth;
     this.stepCount = stepCount;
@@ -160,8 +160,8 @@ class InteriorStairs extends Node {
     this.rotation = 0;
 
     const totalHeight = 7.0;
-    const stepDepth = length / stepCount; 
-    const stepHeight = totalHeight / stepCount; 
+    const stepDepth = length / stepCount;
+    const stepHeight = totalHeight / stepCount;
     const bottomY = -2.0; // Starts at floor level (-2.0 local to house)
 
     this.steps = [];  // risers (solid base blocks, used for collision and visuals)
@@ -213,7 +213,7 @@ class InteriorStairs extends Node {
     }
 
     // --- 2. NEWEL POST (Rectangular column + Sphere) ---
-    const newelX = stepWidth / 2 - 0.15; 
+    const newelX = stepWidth / 2 - 0.15;
     const newelHeight = 2.2;
     const newelZ = stepDepth / 2;
 
@@ -228,7 +228,7 @@ class InteriorStairs extends Node {
     this.newelSphere.translate([newelX, bottomY + newelHeight + 0.12, newelZ]);
 
     // --- 4. HANDRAIL CALCULATIONS ---
-    const dy = (bottomY + totalHeight + 2.0) - (bottomY + newelHeight); 
+    const dy = (bottomY + totalHeight + 2.0) - (bottomY + newelHeight);
     const dz = length - newelZ;
     const slopeAngle = Math.atan2(dy, dz);
     const railLength = Math.sqrt(dy * dy + dz * dz);
@@ -237,7 +237,7 @@ class InteriorStairs extends Node {
     for (let i = 1; i < stepCount; i++) {
       const stepTopY = bottomY + (i + 1) * stepHeight;
       const stepZ = i * stepDepth + stepDepth / 2;
-      
+
       const railY = (bottomY + newelHeight) + (stepZ - newelZ) * (dy / dz);
       const balusterHeight = railY - stepTopY;
 
@@ -245,7 +245,7 @@ class InteriorStairs extends Node {
         const post = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
         post.setParent(this);
         post.translate([newelX, stepTopY + balusterHeight / 2, stepZ]);
-        post.scale([0.08, balusterHeight, 0.08]); 
+        post.scale([0.08, balusterHeight, 0.08]);
         this.posts.push(post);
       }
     }
@@ -253,8 +253,8 @@ class InteriorStairs extends Node {
     // --- 4. BUILD THE HANDRAIL ---
     this.rail = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
     this.rail.setParent(this);
-    
-    const midY = (bottomY + newelHeight + bottomY + totalHeight + 2.0) / 2; 
+
+    const midY = (bottomY + newelHeight + bottomY + totalHeight + 2.0) / 2;
     const midZ = (newelZ + length) / 2;
 
     this.rail.localMatrix = mat4.create();
@@ -264,7 +264,7 @@ class InteriorStairs extends Node {
 
     // --- 5. BASEBOARD / SKIRTING BOARD (Brown lining along floor at base of stairs side) ---
     const baseboardColor = [0.4, 0.25, 0.15, 1.0];
-    
+
     // First step lining: Shorter height (0.35) so it stays below the first step tread
     const baseboard1 = new Wall(gl, solidRes.program, solidRes.locs, baseboardColor);
     baseboard1.setParent(this);
