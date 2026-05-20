@@ -32,12 +32,6 @@ class House extends Node {
     };
 
     const wallConfig = [
-      // --- EXTERIOR WALLS ---
-      // --- North Wall (Z = -13) ---
-      { pos: [-12, 0, -13], scale: [2, 7, 0.2], tex: true },
-      { pos: [-9.5, 4, -13], scale: [3, 3, 0.2], tex: true },
-      { pos: [2.5, 0, -13], scale: [21, 7, 0.2], tex: true },
-
       // --- South Wall (Z = 13) ---
       { pos: [-10.25, 0, 13], scale: [5.5, 7, 0.2], tex: true },
       { pos: [-6, 0, 13], scale: [3, 1, 0.2], tex: true },
@@ -49,34 +43,20 @@ class House extends Node {
       { pos: [6, 4, 13], scale: [3, 3, 0.2], tex: true },
       { pos: [10.25, 0, 13], scale: [5.5, 7, 0.2], tex: true },
 
-      // --- East Wall (X = 13, Split by Room Zones) ---
-      { pos: [13, 0, -11.75], scale: [0.2, 7, 2.5], tex: true }, // Kitchen Corner
-      { pos: [13, 0, -9], scale: [0.2, 1, 3], tex: true }, // Kitchen Window Sill
-      { pos: [13, 4, -9], scale: [0.2, 3, 3], tex: true }, // Kitchen Window Header
-      { pos: [13, 0, -6.25], scale: [0.2, 7, 2.5], tex: true }, // Kitchen Remaining Wall
-      { pos: [13, 0, -1], scale: [0.2, 7, 8], tex: true }, // Dining Room Wall Segment
-      { pos: [13, 0, 8], scale: [0.2, 7, 10], tex: true }, // Living Room Wall Segment
+      // --- East Wall (X = 13) — Living Room only (Z = 3 to 13) ---
+      { pos: [13, 0, 8], scale: [0.2, 7, 10], tex: true }, // Living Room Wall
 
-      // --- West Wall (X = -13, Split by Room Zones) ---
-      { pos: [-13, 0, -11.75], scale: [0.2, 7, 2.5], tex: true }, // Kitchen Corner
-      { pos: [-13, 0, -9], scale: [0.2, 1, 3], tex: true }, // Kitchen Window Sill
-      { pos: [-13, 4, -9], scale: [0.2, 3, 3], tex: true }, // Kitchen Window Header
-      { pos: [-13, 0, -6.25], scale: [0.2, 7, 2.5], tex: true }, // Kitchen Remaining Wall
-      { pos: [-13, 0, -1], scale: [0.2, 7, 8], tex: true }, // Dining Room Wall Segment
-      { pos: [-13, 0, 4.75], scale: [0.2, 7, 3.5], tex: true }, // Living Room Corner Wall
-      { pos: [-13, 0, 8], scale: [0.2, 1, 3], tex: true }, // Living Room Window Sill     
-      { pos: [-13, 4, 8], scale: [0.2, 3, 3], tex: true }, // Living Room Window Header
-      { pos: [-13, 0, 11.25], scale: [0.2, 7, 3.5], tex: true }, // Living Room South Corner
+      // --- West Wall (X = -13) — Living Room only (Z = 3 to 13) ---
+      { pos: [-13, 0, 4.75], scale: [0.2, 7, 3.5], tex: true }, // Living Room Corner Wall (North)
+      { pos: [-13, 0, 8], scale: [0.2, 1, 3], tex: true },      // Living Room Window Sill
+      { pos: [-13, 4, 8], scale: [0.2, 3, 3], tex: true },      // Living Room Window Header
+      { pos: [-13, 0, 11.25], scale: [0.2, 7, 3.5], tex: true }, // Living Room Corner Wall (South)
 
-      // --- Living Room Divider (Doorway on Left) ---
+      // --- Living Room Divider ---
       { pos: [-12, 0, 3], scale: [0.2, 7, 2], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] },
       { pos: [-9.5, 4, 3], scale: [0.2, 3, 3], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] },
-      { pos: [2.5, 0, 3], scale: [0.2, 7, 21], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] },
+      { pos: [2.5, 0, 3], scale: [0.2, 7, 21], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] }
 
-      // --- Dining/Kitchen Divider (Solid + Doorway on Left) ---
-      { pos: [-12, 0, -5], scale: [0.2, 7, 2], rot: Math.PI / 2, color: [0.7, 0.8, 0.9, 1.0] },
-      { pos: [-9.5, 4, -5], scale: [0.2, 3, 3], rot: Math.PI / 2, color: [0.7, 0.8, 0.9, 1.0] },
-      { pos: [2.5, 0, -5], scale: [0.2, 7, 21], rot: Math.PI / 2, color: [0.7, 0.8, 0.9, 1.0] },
     ];
 
     wallConfig.forEach(cfg => {
@@ -114,8 +94,8 @@ class House extends Node {
       if (cfg.rot) {
         // --- INTERIOR ROOM DIVIDER ---
         // South side (local +X) and North side (local -X)
-        const northTex = cfg.pos[2] === -5 ? this.wallTextures.dining : this.wallTextures.livingRoom;
-        const southTex = cfg.pos[2] === -5 ? this.wallTextures.kitchen : this.wallTextures.dining;
+        const northTex = this.wallTextures.livingRoom;  // face into living room → living room wallpaper
+        const southTex = this.wallTextures.outside;    // face away from living room → outside wood
         const leftX = cfg.pos[0] - cfg.scale[2] / 2;
 
         const northScale = getScaleForTexture(northTex);
@@ -177,14 +157,6 @@ class House extends Node {
           outerWall.uvOffset = [leftX / outerScale, startingY / outerScale];
           this.visualTexturedWalls.push({ wall: outerWall, texture: outerTex });
 
-          // Inner Face (South, Z increases, Kitchen)
-          const innerWall = new Wall(gl, texRes.program, texRes.locs);
-          innerWall.setParent(visualParent);
-          innerWall.translate([0, 0, 0.05]);
-          innerWall.scale([cfg.scale[0], cfg.scale[1], 0.1]);
-          innerWall.uvScale = [cfg.scale[0] / innerScale, cfg.scale[1] / innerScale];
-          innerWall.uvOffset = [leftX / innerScale, startingY / innerScale];
-          this.visualTexturedWalls.push({ wall: innerWall, texture: innerTex });
 
           // Baseboard (Only for floor-sitting walls!)
           if (sitsOnFloor) {
@@ -306,19 +278,20 @@ class House extends Node {
       }
     });
 
-    // --- House Ceiling Slab ---
-    this.ceiling = new Wall(gl, solidRes.program, solidRes.locs, [217 / 255, 211 / 255, 134 / 255, 1.0]);
-    this.ceiling.setParent(this);
-    this.ceiling.translate([0, 5, 0]);
-    this.ceiling.scale([26, 0.2, 26]);
 
-    // --- House Floor Slab ---
-    this.floor = new Wall(gl, texRes.program, texRes.locs);
-    this.floor.setParent(this);
-    this.floor.translate([0, -2, 0]);
-    this.floor.scale([26, 0.2, 26]);
-    this.floor.uvScale = [26.0 / floorScale, 26.0 / floorScale];
-    this.floor.uvOffset = [-13.0 / floorScale, -13.0 / floorScale];
+    // --- Ceiling Slab: Living Room (Z = 3 to 13) ---
+    this.livingRoomCeiling = new Wall(gl, solidRes.program, solidRes.locs, [217 / 255, 211 / 255, 134 / 255, 1.0]);
+    this.livingRoomCeiling.setParent(this);
+    this.livingRoomCeiling.translate([0, 5, 8]);  // centre of Z=3..13
+    this.livingRoomCeiling.scale([26, 0.2, 10]);
+
+    // --- Floor Slab: Living Room (Z = 3 to 13) ---
+    this.livingRoomFloor = new Wall(gl, texRes.program, texRes.locs);
+    this.livingRoomFloor.setParent(this);
+    this.livingRoomFloor.translate([0, -2, 8]);
+    this.livingRoomFloor.scale([26, 0.2, 10]);
+    this.livingRoomFloor.uvScale = [26.0 / floorScale, 10.0 / floorScale];
+    this.livingRoomFloor.uvOffset = [-13.0 / floorScale, 3.0 / floorScale];
 
     // --- Doors ---
     this.doors = [];
@@ -335,18 +308,6 @@ class House extends Node {
     livingRoomDoor.setTransform([-9.5, 0, 3], 0);
     this.doors.push(livingRoomDoor);
 
-    // 3. Dining Room / Kitchen Divider Door: Solid Oak Wood Door
-    const kitchenDoor = new Door(gl, solidRes, texRes, 'solid', this.floorTexture, this.screenMeshTexture);
-    kitchenDoor.setParent(this);
-    kitchenDoor.setTransform([-9.5, 0, -5], 0);
-    this.doors.push(kitchenDoor);
-
-    // 4. Back Door: Wooden Door with Screen
-    const backDoor = new Door(gl, solidRes, texRes, 'screen', this.floorTexture, this.screenMeshTexture);
-    backDoor.setParent(this);
-    backDoor.setTransform([-9.5, 0, -13], 0);
-    this.doors.push(backDoor);
-
     // --- Front Porch ---
     this.porch = new Porch(gl, solidRes, texRes, this.wallTextures.outside);
     this.porch.setParent(this);
@@ -360,11 +321,7 @@ class House extends Node {
       { pos: [-6, 0.5, 13], rot: 0 },
       // 2. South Wall: Right Window
       { pos: [6, 0.5, 13], rot: 0 },
-      // 3. East Wall: Kitchen Window
-      { pos: [13, 0.5, -9], rot: Math.PI / 2 },
-      // 4. West Wall: Kitchen Window
-      { pos: [-13, 0.5, -9], rot: -Math.PI / 2 },
-      // 5. West Wall: Living Room Window
+      // 3. West Wall: Living Room Window
       { pos: [-13, 0.5, 8], rot: -Math.PI / 2 },
     ];
 
@@ -375,10 +332,6 @@ class House extends Node {
       this.windows.push(win);
     });
 
-    // --- Kitchen Door Back Steps ---
-    this.kitchenSteps = new Stairs(gl, texRes, 4.0, 1.5, 3, 0.5);
-    this.kitchenSteps.setParent(this);
-    this.kitchenSteps.setTransform([-9.5, 0, -13.0], Math.PI);
 
     // --- Interior Stairs ---
     this.interiorStairs = new InteriorStairs(gl, solidRes, texRes);
@@ -416,16 +369,14 @@ class House extends Node {
   }
 
   update(deltaTime) {
-    this.doors.forEach(door => {
-      door.update(deltaTime);
-    });
+    if (this.doors) this.doors.forEach(door => door.update(deltaTime));
     // Propagate all local matrix updates down the scenegraph to compute world matrices
     this.updateWorldMatrix(null);
   }
 
   getWalkableNodes() {
     const list = [];
-    if (this.floor) list.push(this.floor);
+    if (this.livingRoomFloor) list.push(this.livingRoomFloor);
     if (this.porch) {
       if (this.porch.deck) list.push(this.porch.deck);
       if (this.porch.steps && this.porch.steps.steps) {
@@ -490,20 +441,17 @@ class House extends Node {
       w.draw(gl, viewProjection);
     });
 
-    // Render ceiling slab with solid paint color rgb(217, 211, 134)
-    this.ceiling.draw(gl, viewProjection);
+    // Render ceiling slab
+    this.livingRoomCeiling.draw(gl, viewProjection);
 
-    // Render floor slab with floor.jpg texture
-    this.floor.draw(gl, viewProjection, this.floorTexture);
+    // Render floor slab
+    this.livingRoomFloor.draw(gl, viewProjection, this.floorTexture);
 
     // Render Front Porch (Deck platform, railings, and steps leading to ground)
-    this.porch.draw(gl, viewProjection);
-
-    // Render Kitchen Back Steps
-    this.kitchenSteps.draw(gl, viewProjection, this.wallTextures.outside);
+    if (this.porch) this.porch.draw(gl, viewProjection);
 
     // Render Interior Stairs
-    this.interiorStairs.draw(gl, viewProjection, this.wallTextures.livingRoom);
+    if (this.interiorStairs) this.interiorStairs.draw(gl, viewProjection, this.wallTextures.livingRoom);
 
     // Render Living Room Furniture
     if (this.livingRoomCarpet) this.livingRoomCarpet.draw(gl, viewProjection, this.wallTextures.rug);
@@ -515,24 +463,16 @@ class House extends Node {
     if (this.livingRoomClock) this.livingRoomClock.draw(gl, viewProjection, this.floorTexture);
 
     // Render all opaque parts of interactable doors first
-    this.doors.forEach(door => {
-      door.draw(gl, viewProjection, 'opaque');
-    });
+    if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque'));
 
     // Render all opaque parts of windows
-    this.windows.forEach(win => {
-      win.draw(gl, viewProjection, 'opaque');
-    });
+    if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'opaque'));
 
     // Then render all transparent screen meshes.
     gl.depthMask(false);
-    this.doors.forEach(door => {
-      door.draw(gl, viewProjection, 'transparent');
-    });
+    if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'transparent'));
     // Render all transparent window glass panes
-    this.windows.forEach(win => {
-      win.draw(gl, viewProjection, 'transparent');
-    });
+    if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'transparent'));
     gl.depthMask(true); // Re-enable depth buffer writes
   }
 }
