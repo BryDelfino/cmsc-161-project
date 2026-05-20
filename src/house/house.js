@@ -375,7 +375,7 @@ class House extends Node {
       this.windows.push(win);
     });
 
-    // --- Kitchen Door Back Steps (Solid and gap-free side profile) ---
+    // --- Kitchen Door Back Steps ---
     this.kitchenSteps = new Stairs(gl, texRes, 4.0, 1.5, 3, 0.5);
     this.kitchenSteps.setParent(this);
     this.kitchenSteps.setTransform([-9.5, 0, -13.0], Math.PI);
@@ -384,6 +384,35 @@ class House extends Node {
     this.interiorStairs = new InteriorStairs(gl, solidRes, texRes);
     this.interiorStairs.setParent(this);
     this.interiorStairs.setTransform([12.0, 0, 9.5], Math.PI);
+
+    // --- Living Room Furniture ---
+    this.livingRoomTV = new Television(gl, solidRes, texRes, this.floorTexture);
+    this.livingRoomTV.setParent(this);
+    this.livingRoomTV.setTransform([-9.0, -1.9, 8.0], Math.PI / 2);
+
+    this.livingRoomCarpet = new Carpet(gl, solidRes, texRes);
+    this.livingRoomCarpet.setParent(this);
+    this.livingRoomCarpet.setTransform([-3.0, -1.9, 8.0], 0);
+
+    this.livingRoomRockingChair = new RockingChair(gl, solidRes);
+    this.livingRoomRockingChair.setParent(this);
+    this.livingRoomRockingChair.setTransform([-3.0, -1.9, 6.0], -Math.PI / 2 + 35 * Math.PI / 180);
+
+    this.livingRoomRedCouch = new RedCouch(gl, solidRes);
+    this.livingRoomRedCouch.setParent(this);
+    this.livingRoomRedCouch.setTransform([-3.0, -1.9, 10.0], -Math.PI / 2 - 35 * Math.PI / 180);
+
+    this.livingRoomTable = new SmallTable(gl, solidRes);
+    this.livingRoomTable.setParent(this);
+    this.livingRoomTable.setTransform([-3.0, -1.9, 8.0], 0);
+
+    this.livingRoomLamp = new Lamp(gl, solidRes);
+    this.livingRoomLamp.setParent(this);
+    this.livingRoomLamp.setTransform([-3.8, -1.9, 11.0], 0);
+
+    this.livingRoomClock = new GrandfatherClock(gl, solidRes, texRes, this.floorTexture);
+    this.livingRoomClock.setParent(this);
+    this.livingRoomClock.setTransform([12.450, -1.9, 12.0], -Math.PI / 2);
   }
 
   update(deltaTime) {
@@ -420,14 +449,31 @@ class House extends Node {
       };
     });
     const walls = this.walls.concat(doorWalls);
-    
+
     // Add collision for the interior stairs railing/handrail on the open side
     if (this.interiorStairs && this.interiorStairs.getCollisionBounds) {
       walls.push({
         bounds: this.interiorStairs.getCollisionBounds(this.elevation)
       });
     }
-    
+
+    // Add collisions for living room furniture
+    const furnitureItems = [
+      this.livingRoomTV,
+      this.livingRoomRockingChair,
+      this.livingRoomRedCouch,
+      this.livingRoomTable,
+      this.livingRoomLamp,
+      this.livingRoomClock
+    ];
+    furnitureItems.forEach(item => {
+      if (item && item.getCollisionBounds) {
+        walls.push({
+          bounds: item.getCollisionBounds(this.elevation)
+        });
+      }
+    });
+
     return walls;
   }
 
@@ -458,6 +504,15 @@ class House extends Node {
 
     // Render Interior Stairs
     this.interiorStairs.draw(gl, viewProjection, this.wallTextures.livingRoom);
+
+    // Render Living Room Furniture
+    if (this.livingRoomCarpet) this.livingRoomCarpet.draw(gl, viewProjection, this.wallTextures.rug);
+    if (this.livingRoomTV) this.livingRoomTV.draw(gl, viewProjection, this.floorTexture);
+    if (this.livingRoomRockingChair) this.livingRoomRockingChair.draw(gl, viewProjection);
+    if (this.livingRoomRedCouch) this.livingRoomRedCouch.draw(gl, viewProjection);
+    if (this.livingRoomTable) this.livingRoomTable.draw(gl, viewProjection);
+    if (this.livingRoomLamp) this.livingRoomLamp.draw(gl, viewProjection);
+    if (this.livingRoomClock) this.livingRoomClock.draw(gl, viewProjection, this.floorTexture);
 
     // Render all opaque parts of interactable doors first
     this.doors.forEach(door => {
