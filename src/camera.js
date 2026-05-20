@@ -23,7 +23,53 @@ class Camera {
     });
   }
 
-  update(deltaTime, walls = []) {
+  getStandingHeight(x, z, walkableNodes) {
+    let standingHeight = -2.0; // Default ground level
+
+    const corners = [
+      [-0.5, -0.5, -0.5],
+      [ 0.5, -0.5, -0.5],
+      [-0.5,  0.5, -0.5],
+      [ 0.5,  0.5, -0.5],
+      [-0.5, -0.5,  0.5],
+      [ 0.5, -0.5,  0.5],
+      [-0.5,  0.5,  0.5],
+      [ 0.5,  0.5,  0.5]
+    ];
+
+    for (const node of walkableNodes) {
+      if (!node.worldMatrix) continue;
+
+      let minX = Infinity, maxX = -Infinity;
+      let minY = Infinity, maxY = -Infinity;
+      let minZ = Infinity, maxZ = -Infinity;
+
+      const m = node.worldMatrix;
+      for (const c of corners) {
+        const wx = m[0]*c[0] + m[4]*c[1] + m[8]*c[2] + m[12];
+        const wy = m[1]*c[0] + m[5]*c[1] + m[9]*c[2] + m[13];
+        const wz = m[2]*c[0] + m[6]*c[1] + m[10]*c[2] + m[14];
+
+        if (wx < minX) minX = wx;
+        if (wx > maxX) maxX = wx;
+        if (wy < minY) minY = wy;
+        if (wy > maxY) maxY = wy;
+        if (wz < minZ) minZ = wz;
+        if (wz > maxZ) maxZ = wz;
+      }
+
+      // Check if player's horizontal position is inside this node's AABB
+      if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) {
+        if (maxY > standingHeight) {
+          standingHeight = maxY;
+        }
+      }
+    }
+
+    return standingHeight;
+  }
+
+  update(deltaTime, walls = [], walkableNodes = []) {
     const moveSpeed = 5 * deltaTime;
     const forward = vec3.fromValues(Math.cos(this.yaw), 0, Math.sin(this.yaw));
     const right = vec3.fromValues(-Math.sin(this.yaw), 0, Math.cos(this.yaw));
@@ -34,42 +80,54 @@ class Camera {
     if (this.keys['a']) vec3.subtract(moveDir, moveDir, right);
     if (this.keys['d']) vec3.add(moveDir, moveDir, right);
 
+    let nextX = this.position[0];
+    let nextZ = this.position[2];
+
     if (vec3.length(moveDir) > 0) {
       vec3.normalize(moveDir, moveDir);
       vec3.scale(moveDir, moveDir, moveSpeed);
       
       const playerRadius = 0.5;
 
-      // Player Y-range (from feet to just above head)
-      const pMinY = -2.0; 
-      const pMaxY = 0.5;
+      // Update Y collision range dynamically based on current player position Y (feet to head)
+      const pMinY = this.position[1] - 2.5; 
+      const pMaxY = this.position[1] + 0.2;
 
       // Check X movement
-      let nextX = this.position[0] + moveDir[0];
+      let testX = this.position[0] + moveDir[0];
       let collisionX = false;
       for (const w of walls) {
-        if (nextX + playerRadius > w.bounds.minX && nextX - playerRadius < w.bounds.maxX &&
+        if (testX + playerRadius > w.bounds.minX && testX - playerRadius < w.bounds.maxX &&
             this.position[2] + playerRadius > w.bounds.minZ && this.position[2] - playerRadius < w.bounds.maxZ &&
             pMaxY > w.bounds.minY && pMinY < w.bounds.maxY) {
           collisionX = true;
           break;
         }
       }
-      if (!collisionX) this.position[0] = nextX;
+      if (!collisionX) nextX = testX;
 
       // Check Z movement
-      let nextZ = this.position[2] + moveDir[2];
+      let testZ = this.position[2] + moveDir[2];
       let collisionZ = false;
       for (const w of walls) {
         if (this.position[0] + playerRadius > w.bounds.minX && this.position[0] - playerRadius < w.bounds.maxX &&
-            nextZ + playerRadius > w.bounds.minZ && nextZ - playerRadius < w.bounds.maxZ &&
+            testZ + playerRadius > w.bounds.minZ && testZ - playerRadius < w.bounds.maxZ &&
             pMaxY > w.bounds.minY && pMinY < w.bounds.maxY) {
           collisionZ = true;
           break;
         }
       }
-      if (!collisionZ) this.position[2] = nextZ;
+      if (!collisionZ) nextZ = testZ;
     }
+
+    // Apply horizontal position updates
+    this.position[0] = nextX;
+    this.position[2] = nextZ;
+
+    // Smoothly interpolate the player's Y position to the target eye level
+    const standingHeight = this.getStandingHeight(this.position[0], this.position[2], walkableNodes);
+    const targetY = standingHeight + 2.5; // eye height offset is 2.5 units
+    this.position[1] += (targetY - this.position[1]) * Math.min(1.0, 15.0 * deltaTime);
   }
 
   getProjectionMatrix(gl) {
