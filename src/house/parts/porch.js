@@ -8,40 +8,40 @@ class Column extends MeshNode {
     // to rotate the wood siding texture by exactly 90 degrees on all column sides!
     const vertices = new Float32Array([
       // Front face
-      -0.5, -0.5,  0.5, 1,  0, 0,
-       0.5, -0.5,  0.5, 1,  0, 1,
-       0.5,  0.5,  0.5, 1,  1, 1,
-      -0.5,  0.5,  0.5, 1,  1, 0,
-      
+      -0.5, -0.5, 0.5, 1, 0, 0,
+      0.5, -0.5, 0.5, 1, 0, 1,
+      0.5, 0.5, 0.5, 1, 1, 1,
+      -0.5, 0.5, 0.5, 1, 1, 0,
+
       // Back face
-      -0.5, -0.5, -0.5, 1,  0, 0,
-      -0.5,  0.5, -0.5, 1,  1, 0,
-       0.5,  0.5, -0.5, 1,  1, 1,
-       0.5, -0.5, -0.5, 1,  0, 1,
-      
+      -0.5, -0.5, -0.5, 1, 0, 0,
+      -0.5, 0.5, -0.5, 1, 1, 0,
+      0.5, 0.5, -0.5, 1, 1, 1,
+      0.5, -0.5, -0.5, 1, 0, 1,
+
       // Top face
-      -0.5,  0.5, -0.5, 1,  0, 0,
-      -0.5,  0.5,  0.5, 1,  0, 1,
-       0.5,  0.5,  0.5, 1,  1, 1,
-       0.5,  0.5, -0.5, 1,  1, 0,
-      
+      -0.5, 0.5, -0.5, 1, 0, 0,
+      -0.5, 0.5, 0.5, 1, 0, 1,
+      0.5, 0.5, 0.5, 1, 1, 1,
+      0.5, 0.5, -0.5, 1, 1, 0,
+
       // Bottom face
-      -0.5, -0.5, -0.5, 1,  0, 0,
-       0.5, -0.5, -0.5, 1,  1, 0,
-       0.5, -0.5,  0.5, 1,  1, 1,
-      -0.5, -0.5,  0.5, 1,  0, 1,
-      
+      -0.5, -0.5, -0.5, 1, 0, 0,
+      0.5, -0.5, -0.5, 1, 1, 0,
+      0.5, -0.5, 0.5, 1, 1, 1,
+      -0.5, -0.5, 0.5, 1, 0, 1,
+
       // Right face
-       0.5, -0.5, -0.5, 1,  0, 0,
-       0.5,  0.5, -0.5, 1,  1, 0,
-       0.5,  0.5,  0.5, 1,  1, 1,
-       0.5, -0.5,  0.5, 1,  0, 1,
-      
+      0.5, -0.5, -0.5, 1, 0, 0,
+      0.5, 0.5, -0.5, 1, 1, 0,
+      0.5, 0.5, 0.5, 1, 1, 1,
+      0.5, -0.5, 0.5, 1, 0, 1,
+
       // Left face
-      -0.5, -0.5, -0.5, 1,  0, 0,
-      -0.5, -0.5,  0.5, 1,  0, 1,
-      -0.5,  0.5,  0.5, 1,  1, 1,
-      -0.5,  0.5, -0.5, 1,  1, 0,
+      -0.5, -0.5, -0.5, 1, 0, 0,
+      -0.5, -0.5, 0.5, 1, 0, 1,
+      -0.5, 0.5, 0.5, 1, 1, 1,
+      -0.5, 0.5, -0.5, 1, 1, 0,
     ]);
 
     const indices = new Uint16Array([
@@ -73,7 +73,7 @@ class Column extends MeshNode {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
     gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 24, 0);
     gl.enableVertexAttribArray(this.locs.pos);
-    
+
     if (this.locs.uv !== undefined && this.locs.uv !== -1) {
       gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 24, 16);
       gl.enableVertexAttribArray(this.locs.uv);
@@ -111,13 +111,13 @@ class Porch extends Node {
     // --- 1. PORCH DECK PLATFORM (Wood Plank Textured - 90 deg flipped) ---
     // The deck sits at Y = -2.0 (local house floor height), centered at X = 0, Z = 13.0
     // Width is exactly 26.0 units to extend to the very edge of the front walls!
-    this.deckWidth = 26.0;
+    this.deckWidth = 20.2;
     this.deckDepth = 4.0;
     this.deckThickness = 0.2;
 
     this.deck = new Wall(gl, texRes.program, texRes.locs);
     this.deck.setParent(this);
-    
+
     // We rotate the deck 90 degrees around the Y-axis to spin the wood texture,
     // and swap the X and Z scales so it retains its correct global 26x4 shape!
     this.deck.localMatrix = mat4.create();
@@ -153,12 +153,12 @@ class Porch extends Node {
 
     this.roof = new Wall(gl, texRes.program, texRes.locs);
     this.roof.setParent(this);
-    
+
     // Position it centered along the diagonal slope, sliding 0.25 units into the wall to close the gap completely.
     // We rotate it 90 degrees around Y to spin the texture 90 degrees, and swap X and Z scales!
     const midY = (startY + endY) / 2; // Y = 3.85
     const midZ = 12.75 + this.roofDepth / 2; // Z = 15.5
-    
+
     this.roof.localMatrix = mat4.create();
     mat4.translate(this.roof.localMatrix, this.roof.localMatrix, [0, midY, midZ]);
     mat4.rotateX(this.roof.localMatrix, this.roof.localMatrix, slopeAngle);
@@ -171,8 +171,8 @@ class Porch extends Node {
     const pillarHeight = 5.50;
     const pillarThickness = 0.40;
     const pillarPositions = [
-      [-9.0, 16.0], // Inset Front-Left Column
-      [9.0, 16.0],  // Inset Front-Right Column
+      [-8.0, 16.0], // Inset Front-Left Column
+      [8.0, 16.0],  // Inset Front-Right Column
     ];
 
     pillarPositions.forEach(pos => {
