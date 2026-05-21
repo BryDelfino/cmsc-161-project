@@ -270,11 +270,18 @@ class House extends Node {
     });
 
 
-    // --- Ceiling Slab: Living Room (Z = 3 to 13) ---
-    this.livingRoomCeiling = new Wall(gl, solidRes.program, solidRes.locs, [217 / 255, 211 / 255, 134 / 255, 1.0]);
-    this.livingRoomCeiling.setParent(this);
-    this.livingRoomCeiling.translate([0, 5, 8]);  // centre of Z=3..13
-    this.livingRoomCeiling.scale([20, 0.2, 14]);
+    // --- Ceiling Slab: Living Room with Stair Opening ---
+    const ceilingColor = [217 / 255, 211 / 255, 134 / 255, 1.0];
+
+    this.livingRoomCeilingLeft = new Wall(gl, solidRes.program, solidRes.locs, ceilingColor);
+    this.livingRoomCeilingLeft.setParent(this);
+    this.livingRoomCeilingLeft.translate([-2.5, 5, 8]);  // left ceiling panel around stair opening
+    this.livingRoomCeilingLeft.scale([16, 0.2, 14]);
+
+    this.livingRoomCeilingRight = new Wall(gl, solidRes.program, solidRes.locs, ceilingColor);
+    this.livingRoomCeilingRight.setParent(this);
+    this.livingRoomCeilingRight.translate([7.75, 5, 12]); // right back panel above the area behind the stairs
+    this.livingRoomCeilingRight.scale([4.5, 0.2, 6]);
 
     // --- Floor Slab: Living Room (Z = 3 to 13) ---
     this.livingRoomFloor = new Wall(gl, texRes.program, texRes.locs);
@@ -359,6 +366,17 @@ class House extends Node {
     this.livingRoomClock = new GrandfatherClock(gl, solidRes, texRes, this.floorTexture);
     this.livingRoomClock.setParent(this);
     this.livingRoomClock.setTransform([9.3, -1.9, 14.0], -Math.PI / 2);
+
+    // --- Picture Frames ---
+    // Square frame near the stairs
+    this.squareFrame = new SquarePictureFrame(gl, solidRes);
+    this.squareFrame.setParent(this);
+    this.squareFrame.setTransform([9.660, 3.2, 9.125], Math.PI/2);
+
+    // Rectangular frame on the north wall
+    this.rectangularFrame = new RectangularPictureFrame(gl, solidRes);
+    this.rectangularFrame.setParent(this);
+    this.rectangularFrame.setTransform([0, 2.5, 1.125], 0);
   }
 
   update(deltaTime) {
@@ -434,8 +452,9 @@ class House extends Node {
       w.draw(gl, viewProjection);
     });
 
-    // Render ceiling slab
-    this.livingRoomCeiling.draw(gl, viewProjection);
+    // Render ceiling slabs with stair opening
+    this.livingRoomCeilingLeft.draw(gl, viewProjection);
+    this.livingRoomCeilingRight.draw(gl, viewProjection);
 
     // Render floor slab
     this.livingRoomFloor.draw(gl, viewProjection, this.floorTexture);
@@ -454,6 +473,10 @@ class House extends Node {
     if (this.livingRoomTable) this.livingRoomTable.draw(gl, viewProjection);
     if (this.livingRoomLamp) this.livingRoomLamp.draw(gl, viewProjection);
     if (this.livingRoomClock) this.livingRoomClock.draw(gl, viewProjection, this.floorTexture);
+
+    // Render Picture Frames
+    if (this.squareFrame) this.squareFrame.draw(gl, viewProjection);
+    if (this.rectangularFrame) this.rectangularFrame.draw(gl, viewProjection);
 
     // Render all opaque parts of interactable doors first
     if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque'));
