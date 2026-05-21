@@ -141,17 +141,16 @@ class Cylinder extends Node {
 }
 
 class Television extends Node {
-  constructor(gl, solidRes, texRes, woodTexture) {
+  constructor(gl, solidRes) {
     super();
 
     // Bottom of the legs will sit at local Y = 0.
     // Total height of legs = 0.4.
     // Cabinet is centered at Y = 0.4 + 0.65 = 1.05.
-    this.cabinet = new Wall(gl, texRes.program, texRes.locs);
+    this.cabinet = new Wall(gl, solidRes.program, solidRes.locs, [0.28, 0.18, 0.11, 1.0]);
     this.cabinet.setParent(this);
     this.cabinet.translate([0, 1.05, 0]);
     this.cabinet.scale([1.6, 1.3, 1.0]);
-    this.cabinet.uvScale = [1.6, 1.3];
 
     // Screen: front face is +Z (local coordinate z = 0.5)
     this.screen = new Wall(gl, solidRes.program, solidRes.locs, [0.15, 0.15, 0.15, 1.0]);
@@ -305,9 +304,9 @@ class Television extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection, woodTexture) {
+  draw(gl, viewProjection) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.cabinet.draw(gl, viewProjection, woodTexture);
+    this.cabinet.draw(gl, viewProjection);
     this.screen.draw(gl, viewProjection);
     this.panel.draw(gl, viewProjection);
     this.knob1.draw(gl, viewProjection);

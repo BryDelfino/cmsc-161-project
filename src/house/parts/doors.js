@@ -145,14 +145,11 @@ class Door extends Node {
     // --- SWINGING DOOR LEAF ---
     if (this.type === 'solid') {
       // 1. SOLID OAK WOOD DOOR
-      // A single unit cube scaled to cover the leaf and textured with the wood floor texture
-      const doorLeaf = new Wall(gl, this.texRes.program, this.texRes.locs);
+      // A single unit cube scaled to cover the leaf, rendered with a solid wood color
+      const doorLeaf = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.38, 0.24, 0.13, 1.0]);
       doorLeaf.setParent(this.leaf);
       doorLeaf.scale([w, h, t]);
-      // Apply texture scaling to tile nicely
-      doorLeaf.uvScale = [w / 2.0, h / 2.0];
-      doorLeaf.uvOffset = [0, 0];
-      this.texturedMeshes.push(doorLeaf);
+      this.solidMeshes.push(doorLeaf);
 
       // --- Elegant Brass/Gold Doorknob Assembly for Solid Door ---
       const knobColor = [0.85, 0.65, 0.12, 1.0]; // Elegant Brass/Gold color

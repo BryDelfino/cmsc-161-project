@@ -341,7 +341,7 @@ class House extends Node {
     this.interiorStairs.setTransform([7.8, 0, 9.6], Math.PI);
 
     // --- Living Room Furniture ---
-    this.livingRoomTV = new Television(gl, solidRes, texRes, this.floorTexture);
+    this.livingRoomTV = new Television(gl, solidRes);
     this.livingRoomTV.setParent(this);
     this.livingRoomTV.setTransform([-5.0, -1.9, 8.0], Math.PI / 2);
 
@@ -365,7 +365,7 @@ class House extends Node {
     this.livingRoomLamp.setParent(this);
     this.livingRoomLamp.setTransform([2.7, -1.9, 12.0], 0);
 
-    this.livingRoomClock = new GrandfatherClock(gl, solidRes, texRes, this.floorTexture);
+    this.livingRoomClock = new GrandfatherClock(gl, solidRes);
     this.livingRoomClock.setParent(this);
     this.livingRoomClock.setTransform([9.3, -1.9, 14.0], -Math.PI / 2);
 
@@ -583,12 +583,12 @@ class House extends Node {
 
     // Render Living Room Furniture
     if (this.livingRoomCarpet) this.livingRoomCarpet.draw(gl, viewProjection, this.wallTextures.rug);
-    if (this.livingRoomTV) this.livingRoomTV.draw(gl, viewProjection, this.floorTexture);
+    if (this.livingRoomTV) this.livingRoomTV.draw(gl, viewProjection);
     if (this.livingRoomRockingChair) this.livingRoomRockingChair.draw(gl, viewProjection);
     if (this.livingRoomRedCouch) this.livingRoomRedCouch.draw(gl, viewProjection);
     if (this.livingRoomTable) this.livingRoomTable.draw(gl, viewProjection);
     if (this.livingRoomLamp) this.livingRoomLamp.draw(gl, viewProjection);
-    if (this.livingRoomClock) this.livingRoomClock.draw(gl, viewProjection, this.floorTexture);
+    if (this.livingRoomClock) this.livingRoomClock.draw(gl, viewProjection);
 
     // Render Picture Frames
     if (this.squareFrame) this.squareFrame.draw(gl, viewProjection);
