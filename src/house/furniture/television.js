@@ -218,7 +218,39 @@ class Television extends Node {
       this.legs.push(leg);
     });
 
+    this.isOn = false;
+    this.currentKnobAngle = 0.0;
+    this.targetKnobAngle = 0.0;
     this.scale([0.4, 0.4, 0.4]);
+  }
+
+  toggle() {
+    this.isOn = !this.isOn;
+    this.targetKnobAngle = this.isOn ? Math.PI / 4 : 0.0;
+    this.updateVisuals();
+    console.log("Television toggled:", this.isOn ? "ON" : "OFF");
+  }
+
+  updateVisuals() {
+    if (this.screen) {
+      this.screen.color = this.isOn ? [0.5, 0.8, 1.0, 1.0] : [0.15, 0.15, 0.15, 1.0];
+    }
+  }
+
+  update(deltaTime) {
+    const knobSpeed = 12.0;
+    if (this.currentKnobAngle < this.targetKnobAngle) {
+      this.currentKnobAngle = Math.min(this.targetKnobAngle, this.currentKnobAngle + knobSpeed * deltaTime);
+    } else if (this.currentKnobAngle > this.targetKnobAngle) {
+      this.currentKnobAngle = Math.max(this.targetKnobAngle, this.currentKnobAngle - knobSpeed * deltaTime);
+    }
+
+    if (this.knob1) {
+      this.knob1.localMatrix = mat4.create();
+      mat4.translate(this.knob1.localMatrix, this.knob1.localMatrix, [0.5, 1.3, 0.53]);
+      mat4.rotateX(this.knob1.localMatrix, this.knob1.localMatrix, Math.PI / 2);
+      mat4.rotateZ(this.knob1.localMatrix, this.knob1.localMatrix, this.currentKnobAngle);
+    }
   }
 
   setTransform(pos, rotY) {

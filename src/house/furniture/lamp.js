@@ -26,6 +26,7 @@ class Lamp extends Node {
     shade.setParent(this);
     shade.translate([0, 1.84, 0]);
     this.parts.push(shade);
+    this.shade = shade;
 
     // Light bulb: inside shade, center at Y = 1.74
     // Sphere class is loaded globally from stairs.js
@@ -33,8 +34,25 @@ class Lamp extends Node {
     bulb.setParent(this);
     bulb.translate([0, 1.74, 0]);
     this.parts.push(bulb);
+    this.bulb = bulb;
 
+    this.isOn = true;
     this.scale([1.8, 1.8, 1.8]);
+  }
+
+  toggle() {
+    this.isOn = !this.isOn;
+    this.updateVisuals();
+    console.log("Lamp toggled:", this.isOn ? "ON" : "OFF");
+  }
+
+  updateVisuals() {
+    if (this.bulb) {
+      this.bulb.color = this.isOn ? [1.0, 0.95, 0.6, 1.0] : [0.3, 0.3, 0.25, 1.0];
+    }
+    if (this.shade) {
+      this.shade.color = this.isOn ? [0.96, 0.95, 0.88, 1.0] : [0.5, 0.5, 0.45, 1.0];
+    }
   }
 
   setTransform(pos, rotY) {
