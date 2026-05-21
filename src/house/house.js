@@ -33,29 +33,29 @@ class House extends Node {
 
     const wallConfig = [
       // --- South Wall (Z = 13) ---
-      { pos: [-8.75, 0, 13], scale: [2.5, 7, 0.2], tex: true },
-      { pos: [-6, 0, 13], scale: [3, 1, 0.2], tex: true },
-      { pos: [-6, 4, 13], scale: [3, 3, 0.2], tex: true },
-      { pos: [-3, 0, 13], scale: [3, 7, 0.2], tex: true },
-      { pos: [0, 4, 13], scale: [3, 3, 0.2], tex: true },
-      { pos: [3, 0, 13], scale: [3, 7, 0.2], tex: true },
-      { pos: [6, 0, 13], scale: [3, 1, 0.2], tex: true },
-      { pos: [6, 4, 13], scale: [3, 3, 0.2], tex: true },
-      { pos: [8.75, 0, 13], scale: [2.5, 7, 0.2], tex: true },
+      { pos: [-8.75, 0, 15], scale: [2.5, 7, 0.2], tex: true },
+      { pos: [-6, 0, 15], scale: [3, 1, 0.2], tex: true },
+      { pos: [-6, 4, 15], scale: [3, 3, 0.2], tex: true },
+      { pos: [-3, 0, 15], scale: [3, 7, 0.2], tex: true },
+      { pos: [0, 4, 15], scale: [3, 3, 0.2], tex: true },
+      { pos: [3, 0, 15], scale: [3, 7, 0.2], tex: true },
+      { pos: [6, 0, 15], scale: [3, 1, 0.2], tex: true },
+      { pos: [6, 4, 15], scale: [3, 3, 0.2], tex: true },
+      { pos: [8.75, 0, 15], scale: [2.5, 7, 0.2], tex: true },
 
       // --- East Wall (X = 13) — Living Room only (Z = 3 to 13) ---
-      { pos: [10, 0, 8], scale: [0.2, 7, 10], tex: true }, // Living Room Wall
+      { pos: [10, 0, 8], scale: [0.2, 7, 14], tex: true }, // Living Room Wall
 
-      // --- West Wall (X = -13) — Living Room only (Z = 3 to 13) ---
-      { pos: [-10, 0, 4.75], scale: [0.2, 7, 3.5], tex: true }, // Living Room Corner Wall (North)
-      { pos: [-10, 0, 8], scale: [0.2, 1, 3], tex: true },       // Living Room Window Sill
+      // --- West Wall (X = -13) — Living Room only (Z = 3 to 15) ---
+      { pos: [-10, 0, 3.75], scale: [0.2, 7, 5.5], tex: true }, // Living Room Corner Wall (North)
+      { pos: [-10, 0, 8], scale: [0.2, 1, 5], tex: true },       // Living Room Window Sill
       { pos: [-10, 4, 8], scale: [0.2, 3, 3], tex: true },       // Living Room Window Header
-      { pos: [-10, 0, 11.25], scale: [0.2, 7, 3.5], tex: true }, // Living Room Corner Wall (South)
+      { pos: [-10, 0, 12.25], scale: [0.2, 7, 5.5], tex: true }, // Living Room Corner Wall (South)
 
       // --- Living Room Divider (X = -10 to 10, doorway at X = -8 to -5) ---
-      { pos: [-9, 0, 3], scale: [0.2, 7, 2], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] },   // Corner (X: -10 to -8)
-      { pos: [-6.5, 4, 3], scale: [0.2, 3, 3], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] }, // Header above doorway (X: -8 to -5)
-      { pos: [2.5, 0, 3], scale: [0.2, 7, 15], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] }  // Main wall (X: -5 to 10)
+      { pos: [-9, 0, 1.0], scale: [0.2, 7, 2], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] },   // Corner (X: -10 to -8)
+      { pos: [-6.5, 4, 1.0], scale: [0.2, 3, 3], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] }, // Header above doorway (X: -8 to -5)
+      { pos: [2.5, 0, 1.0], scale: [0.2, 7, 15], rot: Math.PI / 2, color: [0.9, 0.8, 0.7, 1.0] }  // Main wall (X: -5 to 10)
 
     ];
 
@@ -128,18 +128,9 @@ class House extends Node {
         southWall.uvOffset = [leftX / southScale, startingY / southScale];
         this.visualTexturedWalls.push({ wall: southWall, texture: southTex });
 
-        // South-Facing Baseboard (Only for floor-sitting walls!)
-        if (sitsOnFloor) {
-          const southBase = new Wall(gl, solidRes.program, solidRes.locs, [0.4, 0.25, 0.15, 1.0]);
-          southBase.setParent(visualParent);
-          southBase.translate([0.051, -cfg.scale[1] / 2 + 0.35, 0]);
-          southBase.scale([0.11, 0.7, cfg.scale[2]]);
-          this.visualSolidWalls.push(southBase);
-        }
-
       } else {
         // --- EXTERIOR WALL ---
-        if (cfg.pos[2] === -13) {
+        if (cfg.pos[2] < 0) {
           // North Wall (runs along X, Z is thickness)
           const leftX = cfg.pos[0] - cfg.scale[0] / 2;
 
@@ -163,42 +154,6 @@ class House extends Node {
             const base = new Wall(gl, solidRes.program, solidRes.locs, [0.4, 0.25, 0.15, 1.0]);
             base.setParent(visualParent);
             base.translate([0, -cfg.scale[1] / 2 + 0.35, 0.051]);
-            base.scale([cfg.scale[0], 0.7, 0.11]);
-            this.visualSolidWalls.push(base);
-          }
-
-        } else if (cfg.pos[2] === 13) {
-          // South Wall (runs along X, Z is thickness)
-          const leftX = cfg.pos[0] - cfg.scale[0] / 2;
-
-          const outerTex = this.wallTextures.outside;
-          const innerTex = getRoomTexture(cfg.pos[2]);
-          const outerScale = getScaleForTexture(outerTex);
-          const innerScale = getScaleForTexture(innerTex);
-
-          // Outer Face (South, Z increases)
-          const outerWall = new Wall(gl, texRes.program, texRes.locs);
-          outerWall.setParent(visualParent);
-          outerWall.translate([0, 0, 0.05]);
-          outerWall.scale([cfg.scale[0], cfg.scale[1], 0.1]);
-          outerWall.uvScale = [cfg.scale[0] / outerScale, cfg.scale[1] / outerScale];
-          outerWall.uvOffset = [leftX / outerScale, startingY / outerScale];
-          this.visualTexturedWalls.push({ wall: outerWall, texture: outerTex });
-
-          // Inner Face (North, Z decreases, Living Room)
-          const innerWall = new Wall(gl, texRes.program, texRes.locs);
-          innerWall.setParent(visualParent);
-          innerWall.translate([0, 0, -0.05]);
-          innerWall.scale([cfg.scale[0], cfg.scale[1], 0.1]);
-          innerWall.uvScale = [cfg.scale[0] / innerScale, cfg.scale[1] / innerScale];
-          innerWall.uvOffset = [leftX / innerScale, startingY / innerScale];
-          this.visualTexturedWalls.push({ wall: innerWall, texture: innerTex });
-
-          // Baseboard (Only for floor-sitting walls!)
-          if (sitsOnFloor) {
-            const base = new Wall(gl, solidRes.program, solidRes.locs, [0.4, 0.25, 0.15, 1.0]);
-            base.setParent(visualParent);
-            base.translate([0, -cfg.scale[1] / 2 + 0.35, -0.051]);
             base.scale([cfg.scale[0], 0.7, 0.11]);
             this.visualSolidWalls.push(base);
           }
@@ -274,6 +229,42 @@ class House extends Node {
             base.scale([0.11, 0.7, cfg.scale[2]]);
             this.visualSolidWalls.push(base);
           }
+
+        } else if (cfg.pos[2] > 0) {
+          // South Wall (runs along X, Z is thickness)
+          const leftX = cfg.pos[0] - cfg.scale[0] / 2;
+
+          const outerTex = this.wallTextures.outside;
+          const innerTex = getRoomTexture(cfg.pos[2]);
+          const outerScale = getScaleForTexture(outerTex);
+          const innerScale = getScaleForTexture(innerTex);
+
+          // Outer Face (South, Z increases)
+          const outerWall = new Wall(gl, texRes.program, texRes.locs);
+          outerWall.setParent(visualParent);
+          outerWall.translate([0, 0, 0.05]);
+          outerWall.scale([cfg.scale[0], cfg.scale[1], 0.1]);
+          outerWall.uvScale = [cfg.scale[0] / outerScale, cfg.scale[1] / outerScale];
+          outerWall.uvOffset = [leftX / outerScale, startingY / outerScale];
+          this.visualTexturedWalls.push({ wall: outerWall, texture: outerTex });
+
+          // Inner Face (North, Z decreases, Living Room)
+          const innerWall = new Wall(gl, texRes.program, texRes.locs);
+          innerWall.setParent(visualParent);
+          innerWall.translate([0, 0, -0.05]);
+          innerWall.scale([cfg.scale[0], cfg.scale[1], 0.1]);
+          innerWall.uvScale = [cfg.scale[0] / innerScale, cfg.scale[1] / innerScale];
+          innerWall.uvOffset = [leftX / innerScale, startingY / innerScale];
+          this.visualTexturedWalls.push({ wall: innerWall, texture: innerTex });
+
+          // Baseboard (Only for floor-sitting walls!)
+          if (sitsOnFloor) {
+            const base = new Wall(gl, solidRes.program, solidRes.locs, [0.4, 0.25, 0.15, 1.0]);
+            base.setParent(visualParent);
+            base.translate([0, -cfg.scale[1] / 2 + 0.35, -0.051]);
+            base.scale([cfg.scale[0], 0.7, 0.11]);
+            this.visualSolidWalls.push(base);
+          }
         }
       }
     });
@@ -283,13 +274,13 @@ class House extends Node {
     this.livingRoomCeiling = new Wall(gl, solidRes.program, solidRes.locs, [217 / 255, 211 / 255, 134 / 255, 1.0]);
     this.livingRoomCeiling.setParent(this);
     this.livingRoomCeiling.translate([0, 5, 8]);  // centre of Z=3..13
-    this.livingRoomCeiling.scale([20, 0.2, 10]);
+    this.livingRoomCeiling.scale([20, 0.2, 14]);
 
     // --- Floor Slab: Living Room (Z = 3 to 13) ---
     this.livingRoomFloor = new Wall(gl, texRes.program, texRes.locs);
     this.livingRoomFloor.setParent(this);
-    this.livingRoomFloor.translate([0, -2, 8]);
-    this.livingRoomFloor.scale([20, 0.2, 10]);
+    this.livingRoomFloor.translate([0, -2.1, 8]);
+    this.livingRoomFloor.scale([20, 0.2, 14.0]);
     this.livingRoomFloor.uvScale = [20.0 / floorScale, 10.0 / floorScale];
     this.livingRoomFloor.uvOffset = [-10.0 / floorScale, 3.0 / floorScale];
 
@@ -299,19 +290,20 @@ class House extends Node {
     // 1. Front Entrance Door: Solid Oak Wood Door 
     const frontDoor = new Door(gl, solidRes, texRes, 'screen', this.floorTexture, this.screenMeshTexture);
     frontDoor.setParent(this);
-    frontDoor.setTransform([0, 0, 13], 0);
+    frontDoor.setTransform([0, 0, 15], 0);
     this.doors.push(frontDoor);
 
     // 2. Living Room / Dining Divider Door
     const livingRoomDoor = new Door(gl, solidRes, texRes, 'solid', this.floorTexture, this.screenMeshTexture);
     livingRoomDoor.setParent(this);
-    livingRoomDoor.setTransform([-6.5, 0, 3], 0);
+    livingRoomDoor.setTransform([-6.5, 0, 1.0], 0);
     this.doors.push(livingRoomDoor);
 
 
     // --- Front Porch ---
     this.porch = new Porch(gl, solidRes, texRes, this.wallTextures.outside);
     this.porch.setParent(this);
+    this.porch.translate([0, 0, 2]); 
 
     // --- Windows ---
     this.windows = [];
@@ -319,9 +311,9 @@ class House extends Node {
     // Window configurations: [x, y, z], rotY
     const windowConfigs = [
       // 1. South Wall: Left Window
-      { pos: [-6, 0.5, 13], rot: 0 },
+      { pos: [-6, 0.5, 15], rot: 0 },
       // 2. South Wall: Right Window
-      { pos: [6, 0.5, 13], rot: 0 },
+      { pos: [6, 0.5, 15], rot: 0 },
       // 3. West Wall: Living Room Window
       { pos: [-10, 0.5, 8], rot: -Math.PI / 2 },
     ];
@@ -337,7 +329,7 @@ class House extends Node {
     // --- Interior Stairs ---
     this.interiorStairs = new InteriorStairs(gl, solidRes, texRes);
     this.interiorStairs.setParent(this);
-    this.interiorStairs.setTransform([7.8, 0, 9.5], Math.PI);
+    this.interiorStairs.setTransform([7.8, 0, 9.6], Math.PI);
 
     // --- Living Room Furniture ---
     this.livingRoomTV = new Television(gl, solidRes, texRes, this.floorTexture);
@@ -366,7 +358,7 @@ class House extends Node {
 
     this.livingRoomClock = new GrandfatherClock(gl, solidRes, texRes, this.floorTexture);
     this.livingRoomClock.setParent(this);
-    this.livingRoomClock.setTransform([9.3, -1.9, 12.0], -Math.PI / 2);
+    this.livingRoomClock.setTransform([9.3, -1.9, 14.0], -Math.PI / 2);
   }
 
   update(deltaTime) {
