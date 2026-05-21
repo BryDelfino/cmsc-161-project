@@ -1,26 +1,25 @@
 class GrandfatherClock extends Node {
-  constructor(gl, solidRes, texRes, woodTexture) {
+  constructor(gl, solidRes) {
     super();
     this.parts = [];
 
     const brassColor = [0.75, 0.65, 0.25, 1.0];
     const clockFaceColor = [0.95, 0.95, 0.9, 1.0];
     const handsColor = [0.1, 0.1, 0.1, 1.0];
+    const woodColor = [0.28, 0.18, 0.11, 1.0];
 
     // 1. Base (bottom section) - Y = 0 to 0.5, height = 0.5, center at 0.25
-    const base = new Wall(gl, texRes.program, texRes.locs);
+    const base = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
     base.setParent(this);
     base.translate([0, 0.25, 0]);
     base.scale([0.65, 0.5, 0.45]);
-    base.uvScale = [0.65, 0.5];
     this.base = base;
 
     // 2. Waist (middle section) - Y = 0.5 to 1.7, height = 1.2, center at 1.1
-    const waist = new Wall(gl, texRes.program, texRes.locs);
+    const waist = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
     waist.setParent(this);
     waist.translate([0, 1.1, 0]);
     waist.scale([0.5, 1.2, 0.35]);
-    waist.uvScale = [0.5, 1.2];
     this.waist = waist;
 
     // Waist glass window cutout (overlayed black/blue glass pane, semi-transparent)
@@ -43,11 +42,10 @@ class GrandfatherClock extends Node {
     this.parts.push(pendulumBob);
 
     // 3. Hood (top head section) - Y = 1.7 to 2.2, height = 0.5, center at 1.95
-    const hood = new Wall(gl, texRes.program, texRes.locs);
+    const hood = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
     hood.setParent(this);
     hood.translate([0, 1.95, 0]);
     hood.scale([0.6, 0.5, 0.4]);
-    hood.uvScale = [0.6, 0.5];
     this.hood = hood;
 
     // Clock Face: circular dial, Y = 1.95, center at 1.95
@@ -72,11 +70,10 @@ class GrandfatherClock extends Node {
     this.parts.push(minuteHand);
 
     // Decorative crown / finial on top of hood - Y = 2.2 to 2.24, height = 0.04, center at 2.22
-    const crown = new Wall(gl, texRes.program, texRes.locs);
+    const crown = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
     crown.setParent(this);
     crown.translate([0, 2.22, 0]);
     crown.scale([0.5, 0.04, 0.35]);
-    crown.uvScale = [0.5, 0.04];
     this.crown = crown;
 
     // Sphere on top: Y = 2.24 + 0.06 = 2.3
@@ -139,14 +136,14 @@ class GrandfatherClock extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection, woodTexture) {
+  draw(gl, viewProjection) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
 
-    // Draw wood textured segments
-    this.base.draw(gl, viewProjection, woodTexture);
-    this.waist.draw(gl, viewProjection, woodTexture);
-    this.hood.draw(gl, viewProjection, woodTexture);
-    this.crown.draw(gl, viewProjection, woodTexture);
+    // Draw wood solid segments
+    this.base.draw(gl, viewProjection);
+    this.waist.draw(gl, viewProjection);
+    this.hood.draw(gl, viewProjection);
+    this.crown.draw(gl, viewProjection);
 
     // Draw solid components
     this.parts.forEach(part => part.draw(gl, viewProjection));

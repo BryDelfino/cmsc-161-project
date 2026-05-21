@@ -13,6 +13,8 @@ class Door extends Node {
     this.isOpen = initialOpen;
     this.currentAngle = initialOpen ? Math.PI / 2 : 0.0;
     this.targetAngle = initialOpen ? Math.PI / 2 : 0.0;
+    this.isLocked = false;
+    this.lockedAnimTime = 0.0;
     
     // Physical dimensions
     this.width = 2.85;
@@ -57,12 +59,20 @@ class Door extends Node {
   }
 
   toggle() {
+    if (this.isLocked) {
+      this.lockedAnimTime = 0.4;
+      return;
+    }
     this.isOpen = !this.isOpen;
     // We swing inwards (positive 90 degrees / half Pi)
     this.targetAngle = this.isOpen ? Math.PI / 2 : 0.0;
   }
 
   update(deltaTime) {
+    if (this.isLocked && this.lockedAnimTime > 0) {
+      this.lockedAnimTime = Math.max(0.0, this.lockedAnimTime - deltaTime);
+    }
+
     const swingSpeed = 4.0; // speed in rad/sec
     if (this.currentAngle < this.targetAngle) {
       this.currentAngle = Math.min(this.targetAngle, this.currentAngle + swingSpeed * deltaTime);
@@ -77,9 +87,16 @@ class Door extends Node {
 
     // Animate doorknobs rotating during latch/unlatch sequence
     if (this.knobBaseF && this.knobBaseB && this.knobPosF && this.knobPosB) {
-      const p = this.currentAngle / (Math.PI / 2);
-      // Twist the knob by up to 45 degrees (0.8 rad) as the door unlatches, only when opening (this.isOpen is true)
-      const knobAngle = (this.isOpen && p < 0.5) ? Math.sin(p * Math.PI / 0.5) * 0.8 : 0.0;
+      let knobAngle = 0.0;
+      if (this.isLocked && this.lockedAnimTime > 0) {
+        const animDuration = 0.4;
+        const progress = (animDuration - this.lockedAnimTime) / animDuration;
+        knobAngle = Math.sin(progress * Math.PI) * 0.25;
+      } else {
+        const p = this.currentAngle / (Math.PI / 2);
+        // Twist the knob by up to 45 degrees (0.8 rad) as the door unlatches, only when opening (this.isOpen is true)
+        knobAngle = (this.isOpen && p < 0.5) ? Math.sin(p * Math.PI / 0.5) * 0.8 : 0.0;
+      }
 
       this.knobBaseF.localMatrix = mat4.create();
       mat4.translate(this.knobBaseF.localMatrix, this.knobBaseF.localMatrix, this.knobPosF);
@@ -128,14 +145,11 @@ class Door extends Node {
     // --- SWINGING DOOR LEAF ---
     if (this.type === 'solid') {
       // 1. SOLID OAK WOOD DOOR
-      // A single unit cube scaled to cover the leaf and textured with the wood floor texture
-      const doorLeaf = new Wall(gl, this.texRes.program, this.texRes.locs);
+      // A single unit cube scaled to cover the leaf, rendered with a solid wood color
+      const doorLeaf = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.38, 0.24, 0.13, 1.0]);
       doorLeaf.setParent(this.leaf);
       doorLeaf.scale([w, h, t]);
-      // Apply texture scaling to tile nicely
-      doorLeaf.uvScale = [w / 2.0, h / 2.0];
-      doorLeaf.uvOffset = [0, 0];
-      this.texturedMeshes.push(doorLeaf);
+      this.solidMeshes.push(doorLeaf);
 
       // --- Elegant Brass/Gold Doorknob Assembly for Solid Door ---
       const knobColor = [0.85, 0.65, 0.12, 1.0]; // Elegant Brass/Gold color

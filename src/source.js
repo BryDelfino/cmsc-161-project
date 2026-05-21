@@ -59,6 +59,7 @@ function main() {
 
   // 3. INITIALIZE COMPONENTS
   const camera = new Camera(canvas);
+  let lockedMessageTimer = 0.0;
   
   const skybox = new Skybox(gl, skyboxProgram, skyboxLocs, [
     '../assets/skybox/px.png', 
@@ -146,29 +147,147 @@ function main() {
     houseTextures
   );
 
-  // Listen for 'E' keypress to toggle closest interactable door within reach
-  window.addEventListener("keydown", (e) => {
-    if (e.key.toLowerCase() === "e") {
-      const playerPos = camera.position;
-      let closestDoor = null;
-      let minDist = 3.5; // Interaction reach distance
+  // Compute initial world matrices immediately
+  house.update(0);
 
-      house.doors.forEach(door => {
-        // Door world position: Door is a child of House, so its world pos is offset by House elevation
-        const doorWorldPos = vec3.fromValues(
-          door.position[0],
-          door.position[1] + house.elevation,
-          door.position[2]
+  // Helper to find the closest interactable object that the camera is facing
+  function getClosestInteractable(maxDist = 5.0) {
+    const playerPos = camera.position;
+    // Camera's horizontal forward vector on the X-Z plane (derived from camera.yaw)
+    const forwardX = Math.cos(camera.yaw);
+    const forwardZ = Math.sin(camera.yaw);
+
+    let closestObj = null;
+    let objType = null;
+    let minDist = maxDist;
+
+    // Helper to check if player is facing the target position within a 60-degree half-angle cone (dot >= 0.5)
+    function isFacing(targetWorldPos, dotThreshold = 0.5) {
+      const dx = targetWorldPos[0] - playerPos[0];
+      const dz = targetWorldPos[2] - playerPos[2];
+      const dist2D = Math.sqrt(dx * dx + dz * dz);
+      if (dist2D > 0) {
+        const dirX = dx / dist2D;
+        const dirZ = dz / dist2D;
+        const dot = forwardX * dirX + forwardZ * dirZ;
+        return dot >= dotThreshold;
+      }
+      return true;
+    }
+
+    // 1. Doors (Check distance and facing towards doorknob if available)
+    house.doors.forEach(door => {
+      let doorWorldPos;
+      if (door.knobBaseF && door.knobBaseF.worldMatrix) {
+        doorWorldPos = vec3.fromValues(
+          door.knobBaseF.worldMatrix[12],
+          door.knobBaseF.worldMatrix[13],
+          door.knobBaseF.worldMatrix[14]
         );
-        const dist = vec3.distance(playerPos, doorWorldPos);
-        if (dist < minDist) {
-          minDist = dist;
-          closestDoor = door;
+      } else {
+        doorWorldPos = vec3.fromValues(
+          door.worldMatrix[12],
+          door.worldMatrix[13],
+          door.worldMatrix[14]
+        );
+      }
+
+      const dist = vec3.distance(playerPos, doorWorldPos);
+      if (dist < minDist && isFacing(doorWorldPos, 0.5)) {
+        minDist = dist;
+        closestObj = door;
+        objType = 'door';
+      }
+    });
+
+    // 2. Lightswitches (Only interactable from the front side of the switch plate)
+    if (house.lightswitches) {
+      house.lightswitches.forEach(sw => {
+        const swWorldPos = vec3.fromValues(
+          sw.worldMatrix[12],
+          sw.worldMatrix[13],
+          sw.worldMatrix[14]
+        );
+
+        // Retrieve local +Z axis of the switch in world space to check if player is on the front side
+        const switchFront = vec3.fromValues(
+          sw.worldMatrix[8],
+          sw.worldMatrix[9],
+          sw.worldMatrix[10]
+        );
+        const toPlayer = vec3.create();
+        vec3.subtract(toPlayer, playerPos, swWorldPos);
+        const frontDot = vec3.dot(switchFront, toPlayer);
+
+        if (frontDot > 0) {
+          const dist = vec3.distance(playerPos, swWorldPos);
+          if (dist < minDist && isFacing(swWorldPos, 0.5)) {
+            minDist = dist;
+            closestObj = sw;
+            objType = 'lightswitch';
+          }
         }
       });
+    }
 
-      if (closestDoor) {
-        closestDoor.toggle();
+    // 3. Lamp
+    if (house.livingRoomLamp) {
+      const lampWorldPos = vec3.fromValues(
+        house.livingRoomLamp.worldMatrix[12],
+        house.livingRoomLamp.worldMatrix[13],
+        house.livingRoomLamp.worldMatrix[14]
+      );
+      const dist = vec3.distance(playerPos, lampWorldPos);
+      if (dist < minDist && isFacing(lampWorldPos, 0.5)) {
+        minDist = dist;
+        closestObj = house.livingRoomLamp;
+        objType = 'lamp';
+      }
+    }
+
+    // 4. TV (Only interactable from the front side of the TV screen)
+    if (house.livingRoomTV) {
+      const tvWorldPos = vec3.fromValues(
+        house.livingRoomTV.worldMatrix[12],
+        house.livingRoomTV.worldMatrix[13],
+        house.livingRoomTV.worldMatrix[14]
+      );
+
+      // Retrieve local +Z axis of the TV in world space to check if player is in front of the screen
+      const tvFront = vec3.fromValues(
+        house.livingRoomTV.worldMatrix[8],
+        house.livingRoomTV.worldMatrix[9],
+        house.livingRoomTV.worldMatrix[10]
+      );
+      const toPlayer = vec3.create();
+      vec3.subtract(toPlayer, playerPos, tvWorldPos);
+      const frontDot = vec3.dot(tvFront, toPlayer);
+
+      if (frontDot > 0) {
+        const dist = vec3.distance(playerPos, tvWorldPos);
+        if (dist < minDist && isFacing(tvWorldPos, 0.5)) {
+          minDist = dist;
+          closestObj = house.livingRoomTV;
+          objType = 'tv';
+        }
+      }
+    }
+
+    return { obj: closestObj, type: objType };
+  }
+
+  // Listen for 'E' keypress to toggle closest interactable object (door, lightswitch, lamp, or TV) within reach and facing direction
+  window.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "e") {
+      const { obj: closestObj, type: objType } = getClosestInteractable(5.0);
+      if (closestObj) {
+        closestObj.toggle();
+        if (objType === 'lightswitch' && house.ceilingLight) {
+          house.ceilingLight.toggle();
+        }
+        if (objType === 'door' && closestObj.isLocked) {
+          lockedMessageTimer = 2.0;
+        }
       }
     }
   });
@@ -197,30 +316,29 @@ function main() {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    // Update HUD overlay interaction prompt based on door proximity
+    // Update HUD overlay interaction prompt based on door/lightswitch/lamp/TV proximity
     const promptDiv = document.querySelector("#interaction-prompt");
     if (promptDiv) {
-      const playerPos = camera.position;
-      let closestDoor = null;
-      let minDist = 3.5;
-      house.doors.forEach(door => {
-        const doorWorldPos = vec3.fromValues(
-          door.position[0],
-          door.position[1] + house.elevation,
-          door.position[2]
-        );
-        const dist = vec3.distance(playerPos, doorWorldPos);
-        if (dist < minDist) {
-          minDist = dist;
-          closestDoor = door;
-        }
-      });
-
-      if (closestDoor) {
-        promptDiv.textContent = `Press [E] to ${closestDoor.isOpen ? "Close" : "Open"} Door`;
+      if (lockedMessageTimer > 0) {
+        lockedMessageTimer -= deltaTime;
+        promptDiv.textContent = "The door is locked.";
         promptDiv.style.display = "block";
       } else {
-        promptDiv.style.display = "none";
+        const { obj: closestObj, type: objType } = getClosestInteractable(5.0);
+        if (closestObj) {
+          if (objType === 'door') {
+            promptDiv.textContent = `Press [E] to ${closestObj.isOpen ? "Close" : "Open"} Door`;
+          } else if (objType === 'lightswitch') {
+            promptDiv.textContent = `Press [E] to Turn ${closestObj.isOn ? "Off" : "On"} Light`;
+          } else if (objType === 'lamp') {
+            promptDiv.textContent = `Press [E] to Turn ${closestObj.isOn ? "Off" : "On"} Lamp`;
+          } else if (objType === 'tv') {
+            promptDiv.textContent = `Press [E] to Turn ${closestObj.isOn ? "Off" : "On"} TV`;
+          }
+          promptDiv.style.display = "block";
+        } else {
+          promptDiv.style.display = "none";
+        }
       }
     }
 
