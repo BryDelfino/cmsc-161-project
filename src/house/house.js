@@ -296,7 +296,7 @@ class House extends Node {
     // 2. Living Room / Dining Divider Door
     const livingRoomDoor = new Door(gl, solidRes, texRes, 'solid', this.floorTexture, this.screenMeshTexture);
     livingRoomDoor.setParent(this);
-    livingRoomDoor.setTransform([-6.5, 0, 1.0], 0);
+    livingRoomDoor.setTransform([-6.5, 0, 1.1], 0);
     this.doors.push(livingRoomDoor);
 
 
