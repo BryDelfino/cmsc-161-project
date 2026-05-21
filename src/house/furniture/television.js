@@ -141,8 +141,10 @@ class Cylinder extends Node {
 }
 
 class Television extends Node {
-  constructor(gl, solidRes) {
+  constructor(gl, solidRes, texRes) {
     super();
+    // Store the WebGL context for later use (e.g., updating video texture)
+    this.gl = gl;
 
     // Bottom of the legs will sit at local Y = 0.
     // Total height of legs = 0.4.
@@ -152,11 +154,43 @@ class Television extends Node {
     this.cabinet.translate([0, 1.05, 0]);
     this.cabinet.scale([1.6, 1.3, 1.0]);
 
-    // Screen: front face is +Z (local coordinate z = 0.5)
-    this.screen = new Wall(gl, solidRes.program, solidRes.locs, [0.15, 0.15, 0.15, 1.0]);
+    // Screen: uses textured shader so we can display video frames
+    this.screen = new Wall(gl, texRes.program, texRes.locs, [0.15, 0.15, 0.15, 1.0]);
     this.screen.setParent(this);
     this.screen.translate([-0.15, 1.1, 0.51]); // Shifted left to make room for knob/controls
     this.screen.scale([1.0, 0.9, 0.02]);
+    // Create hidden video element for playback
+    this.video = document.createElement('video');
+    this.video.src = '../assets/textures/courage.mp4';
+    this.video.autoplay = false;
+    this.video.loop = true;
+    this.video.muted = false;
+    this.video.crossOrigin = 'anonymous';
+    // Create texture to hold video frames
+    this.videoTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.videoTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    // Initialize with a single black pixel
+    const blackPixel = new Uint8Array([0, 0, 0, 255]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, blackPixel);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    // Create a static 1x1 black texture for the off state
+    this.blackTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.blackTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, blackPixel);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    // Stretch horizontally to crop pillarbox bars (4:3 content in 16:9 frame)
+    this.screen.uvScale = [0.75, 1.0];
+    this.screen.uvOffset = [0.125, 0.0];
 
     // Dial panel background (recessed/different color)
     this.panel = new Wall(gl, solidRes.program, solidRes.locs, [0.25, 0.2, 0.15, 1.0]);
@@ -231,8 +265,16 @@ class Television extends Node {
   }
 
   updateVisuals() {
-    if (this.screen) {
-      this.screen.color = this.isOn ? [0.5, 0.8, 1.0, 1.0] : [0.15, 0.15, 0.15, 1.0];
+    if (this.isOn) {
+      // Start video playback when TV turns on
+      if (this.video && this.video.paused) {
+        this.video.play();
+      }
+    } else {
+      if (this.video && !this.video.paused) {
+        this.video.pause();
+        this.video.currentTime = 0;
+      }
     }
   }
 
@@ -242,6 +284,19 @@ class Television extends Node {
       this.currentKnobAngle = Math.min(this.targetKnobAngle, this.currentKnobAngle + knobSpeed * deltaTime);
     } else if (this.currentKnobAngle > this.targetKnobAngle) {
       this.currentKnobAngle = Math.max(this.targetKnobAngle, this.currentKnobAngle - knobSpeed * deltaTime);
+    }
+
+    // Update video texture each frame when TV is on
+    if (this.isOn && this.video && this.video.readyState >= this.video.HAVE_CURRENT_DATA) {
+      const gl = this._glCache;
+      if (gl) {
+        gl.bindTexture(gl.TEXTURE_2D, this.videoTexture);
+        // Flip Y so the video is right-side up
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.video);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+      }
     }
 
     if (this.knob1) {
@@ -255,9 +310,12 @@ class Television extends Node {
   setTransform(pos, rotY) {
     this.position = pos;
     this.rotation = rotY;
+    // Ensure local matrix is reset for each transform
     this.localMatrix = mat4.create();
     mat4.translate(this.localMatrix, this.localMatrix, pos);
     mat4.rotate(this.localMatrix, this.localMatrix, rotY, [0, 1, 0]);
+    // Cache gl context for video texture updates
+    this._glCache = this.gl;
     mat4.scale(this.localMatrix, this.localMatrix, [1, 1, 1]);
   }
 
@@ -307,7 +365,12 @@ class Television extends Node {
   draw(gl, viewProjection) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
     this.cabinet.draw(gl, viewProjection);
-    this.screen.draw(gl, viewProjection);
+    // Draw screen with video texture when on, black texture when off
+    if (this.isOn && this.videoTexture) {
+      this.screen.draw(gl, viewProjection, this.videoTexture);
+    } else {
+      this.screen.draw(gl, viewProjection, this.blackTexture);
+    }
     this.panel.draw(gl, viewProjection);
     this.knob1.draw(gl, viewProjection);
     this.knob2.draw(gl, viewProjection);
