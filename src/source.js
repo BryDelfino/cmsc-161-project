@@ -151,7 +151,7 @@ function main() {
   house.update(0);
 
   // Helper to find the closest interactable object that the camera is facing
-  function getClosestInteractable(maxDist = 3.5) {
+  function getClosestInteractable(maxDist = 5.0) {
     const playerPos = camera.position;
     // Camera's horizontal forward vector on the X-Z plane (derived from camera.yaw)
     const forwardX = Math.cos(camera.yaw);
@@ -279,7 +279,7 @@ function main() {
   // Listen for 'E' keypress to toggle closest interactable object (door, lightswitch, lamp, or TV) within reach and facing direction
   window.addEventListener("keydown", (e) => {
     if (e.key.toLowerCase() === "e") {
-      const { obj: closestObj, type: objType } = getClosestInteractable(3.5);
+      const { obj: closestObj, type: objType } = getClosestInteractable(5.0);
       if (closestObj) {
         closestObj.toggle();
         if (objType === 'lightswitch' && house.ceilingLight) {
@@ -324,7 +324,7 @@ function main() {
         promptDiv.textContent = "The door is locked.";
         promptDiv.style.display = "block";
       } else {
-        const { obj: closestObj, type: objType } = getClosestInteractable(3.5);
+        const { obj: closestObj, type: objType } = getClosestInteractable(5.0);
         if (closestObj) {
           if (objType === 'door') {
             promptDiv.textContent = `Press [E] to ${closestObj.isOpen ? "Close" : "Open"} Door`;
