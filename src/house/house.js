@@ -287,9 +287,10 @@ class House extends Node {
     this.livingRoomFloor = new Wall(gl, texRes.program, texRes.locs);
     this.livingRoomFloor.setParent(this);
     this.livingRoomFloor.translate([0, -2.1, 8]);
-    this.livingRoomFloor.scale([20, 0.2, 14.0]);
-    this.livingRoomFloor.uvScale = [20.0 / floorScale, 10.0 / floorScale];
-    this.livingRoomFloor.uvOffset = [-10.0 / floorScale, 3.0 / floorScale];
+    this.livingRoomFloor.rotate(Math.PI / 2, [0, 1, 0]);
+    this.livingRoomFloor.scale([14.0, 0.2, 20.0]);
+    this.livingRoomFloor.uvScale = [14.0 / floorScale, 20.0 / floorScale];
+    this.livingRoomFloor.uvOffset = [3.0 / floorScale, -10.0 / floorScale];
 
     // --- Doors ---
     this.doors = [];
@@ -435,8 +436,9 @@ class House extends Node {
     const upstairsFloor = new Wall(gl, texRes.program, texRes.locs);
     upstairsFloor.setParent(this);
     upstairsFloor.translate([7.75, 5.0, -0.5]);
-    upstairsFloor.scale([4.5, 0.2, 3.0]);
-    upstairsFloor.uvScale = [4.5 / 2.0, 3.0 / 2.0];
+    upstairsFloor.rotate(Math.PI / 2, [0, 1, 0]);
+    upstairsFloor.scale([3.0, 0.2, 4.5]);
+    upstairsFloor.uvScale = [3.0 / 2.0, 4.5 / 2.0];
     this.visualTexturedWalls.push({ wall: upstairsFloor, texture: this.floorTexture });
 
     // 2. Upstairs West Wall: spans X at 5.5, Y from 5.0 to 12.0, Z from -2.0 to 9.0
