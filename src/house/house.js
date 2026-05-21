@@ -304,13 +304,14 @@ class House extends Node {
     const livingRoomDoor = new Door(gl, solidRes, texRes, 'solid', this.floorTexture, this.screenMeshTexture);
     livingRoomDoor.setParent(this);
     livingRoomDoor.setTransform([-6.5, 0, 1.1], 0);
+    livingRoomDoor.isLocked = true;
     this.doors.push(livingRoomDoor);
 
 
     // --- Front Porch ---
     this.porch = new Porch(gl, solidRes, texRes, this.wallTextures.outside);
     this.porch.setParent(this);
-    this.porch.translate([0, 0, 2]); 
+    this.porch.translate([0, 0, 2]);
 
     // --- Windows ---
     this.windows = [];
@@ -371,16 +372,129 @@ class House extends Node {
     // Square frame near the stairs
     this.squareFrame = new SquarePictureFrame(gl, solidRes);
     this.squareFrame.setParent(this);
-    this.squareFrame.setTransform([9.660, 3.2, 9.125], Math.PI/2);
+    this.squareFrame.setTransform([9.660, 3.2, 9.125], Math.PI / 2);
 
     // Rectangular frame on the north wall
     this.rectangularFrame = new RectangularPictureFrame(gl, solidRes);
     this.rectangularFrame.setParent(this);
     this.rectangularFrame.setTransform([0, 2.5, 1.125], 0);
+
+    // --- Lightswitches ---
+    this.lightswitches = [];
+
+    // Lightswitch 1: Near front door entrance (on South Wall, facing inside)
+    const entranceSwitch = new Lightswitch(gl, solidRes, true);
+    entranceSwitch.setParent(this);
+    entranceSwitch.setTransform([2.3, 0.5, 14.88], Math.PI);
+    this.lightswitches.push(entranceSwitch);
+
+    // --- Ceiling Light ---
+    this.ceilingLight = new CeilingLight(gl, solidRes, true);
+    this.ceilingLight.setParent(this);
+    this.ceilingLight.setTransform([-2.0, 5.0, 8.0]);
+
+    // --- Outside Boundaries to prevent seeing the sides of the house ---
+    // West Boundary: blocks X < -10.1 for Z from 15.0 to 26.0
+    this.walls.push({
+      bounds: {
+        minX: -10.3,
+        maxX: -10.1,
+        minY: -10.0,
+        maxY: 10.0,
+        minZ: 15.0,
+        maxZ: 26.0
+      }
+    });
+
+    // East Boundary: blocks X > 10.1 for Z from 15.0 to 26.0
+    this.walls.push({
+      bounds: {
+        minX: 10.1,
+        maxX: 10.3,
+        minY: -10.0,
+        maxY: 10.0,
+        minZ: 15.0,
+        maxZ: 26.0
+      }
+    });
+
+    // South Boundary: blocks Z > 26.0 for X from -10.3 to 10.3
+    this.walls.push({
+      bounds: {
+        minX: -10.3,
+        maxX: 10.3,
+        minY: -10.0,
+        maxY: 10.0,
+        minZ: 26.0,
+        maxZ: 26.2
+      }
+    });
+
+    // --- Upstairs Room Illusion (Landing and Enclosing Walls) ---
+    // 1. Upstairs Floor: spans X from 5.5 to 10.0, Z from -2.0 to 1.0, at Y = 5.0
+    const upstairsFloor = new Wall(gl, texRes.program, texRes.locs);
+    upstairsFloor.setParent(this);
+    upstairsFloor.translate([7.75, 5.0, -0.5]);
+    upstairsFloor.scale([4.5, 0.2, 3.0]);
+    upstairsFloor.uvScale = [4.5 / 2.0, 3.0 / 2.0];
+    this.visualTexturedWalls.push({ wall: upstairsFloor, texture: this.floorTexture });
+
+    // 2. Upstairs West Wall: spans X at 5.5, Y from 5.0 to 12.0, Z from -2.0 to 9.0
+    const upstairsWestWall = new Wall(gl, texRes.program, texRes.locs);
+    upstairsWestWall.setParent(this);
+    upstairsWestWall.translate([5.5, 8.5, 3.5]);
+    upstairsWestWall.scale([0.2, 7.0, 11.0]);
+    upstairsWestWall.uvScale = [11.0 / 2.0, 7.0 / 2.0];
+    this.visualTexturedWalls.push({ wall: upstairsWestWall, texture: this.wallTextures.livingRoom });
+
+    // 3. Upstairs East Wall: spans X at 10.0, Y from 5.0 to 12.0, Z from -2.0 to 9.0
+    const upstairsEastWall = new Wall(gl, texRes.program, texRes.locs);
+    upstairsEastWall.setParent(this);
+    upstairsEastWall.translate([10.0, 8.5, 3.5]);
+    upstairsEastWall.scale([0.2, 7.0, 11.0]);
+    upstairsEastWall.uvScale = [11.0 / 2.0, 7.0 / 2.0];
+    this.visualTexturedWalls.push({ wall: upstairsEastWall, texture: this.wallTextures.livingRoom });
+
+    // 4. Upstairs North Wall (back of the hallway): spans Z at -2.0, Y from 5.0 to 12.0, X from 5.5 to 10.0
+    const upstairsNorthWall = new Wall(gl, texRes.program, texRes.locs);
+    upstairsNorthWall.setParent(this);
+    upstairsNorthWall.translate([7.75, 8.5, -2.0]);
+    upstairsNorthWall.scale([4.5, 7.0, 0.2]);
+    upstairsNorthWall.uvScale = [4.5 / 2.0, 7.0 / 2.0];
+    this.visualTexturedWalls.push({ wall: upstairsNorthWall, texture: this.wallTextures.livingRoom });
+
+    // 5. Upstairs South Wall: spans Z at 9.0, Y from 5.0 to 12.0, X from 5.5 to 10.0
+    const upstairsSouthWall = new Wall(gl, texRes.program, texRes.locs);
+    upstairsSouthWall.setParent(this);
+    upstairsSouthWall.translate([7.75, 8.5, 9.0]);
+    upstairsSouthWall.scale([4.5, 7.0, 0.2]);
+    upstairsSouthWall.uvScale = [4.5 / 2.0, 7.0 / 2.0];
+    this.visualTexturedWalls.push({ wall: upstairsSouthWall, texture: this.wallTextures.livingRoom });
+
+    // 6. Stairs Collision Boundary: blocks player from stepping onto the landing floor
+    this.walls.push({
+      bounds: {
+        minX: 5.5,
+        maxX: 10.0,
+        minY: 3.0,
+        maxY: 10.0,
+        minZ: 2.0,
+        maxZ: 2.2
+      }
+    });
+
+    // 7. Upstairs Ceiling: spans X from 5.5 to 10.0, Z from -2.0 to 9.0, at Y = 12.0
+    const upstairsCeiling = new Wall(gl, solidRes.program, solidRes.locs, ceilingColor);
+    upstairsCeiling.setParent(this);
+    upstairsCeiling.translate([7.75, 12.0, 3.5]);
+    upstairsCeiling.scale([4.5, 0.2, 11.0]);
+    this.visualSolidWalls.push(upstairsCeiling);
   }
 
   update(deltaTime) {
     if (this.doors) this.doors.forEach(door => door.update(deltaTime));
+    if (this.lightswitches) this.lightswitches.forEach(sw => sw.update(deltaTime));
+    if (this.livingRoomTV && this.livingRoomTV.update) this.livingRoomTV.update(deltaTime);
     // Propagate all local matrix updates down the scenegraph to compute world matrices
     this.updateWorldMatrix(null);
   }
@@ -477,6 +591,12 @@ class House extends Node {
     // Render Picture Frames
     if (this.squareFrame) this.squareFrame.draw(gl, viewProjection);
     if (this.rectangularFrame) this.rectangularFrame.draw(gl, viewProjection);
+
+    // Render Lightswitches
+    if (this.lightswitches) this.lightswitches.forEach(sw => sw.draw(gl, viewProjection));
+
+    // Render Ceiling Light
+    if (this.ceilingLight) this.ceilingLight.draw(gl, viewProjection);
 
     // Render all opaque parts of interactable doors first
     if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque'));
