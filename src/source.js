@@ -60,13 +60,13 @@ function main() {
   // 3. INITIALIZE COMPONENTS
   const camera = new Camera(canvas);
   let lockedMessageTimer = 0.0;
-  
+
   const skybox = new Skybox(gl, skyboxProgram, skyboxLocs, [
-    '../assets/skybox/px.png', 
+    '../assets/skybox/px.png',
     '../assets/skybox/nx.png',
-    '../assets/skybox/py.png', 
+    '../assets/skybox/py.png',
     '../assets/skybox/ny.png',
-    '../assets/skybox/pz.png', 
+    '../assets/skybox/pz.png',
     '../assets/skybox/nz.png'
   ]);
 
@@ -74,7 +74,7 @@ function main() {
   // --- FLOOR TEXTURE (Load from file) ---
   const floorTexture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, floorTexture);
-  
+
   // Fill with a solid brown while we wait for the image to load
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([101, 67, 33, 255]));
 
@@ -134,14 +134,12 @@ function main() {
     outside: loadTexture(gl, "../assets/textures/outsidewall.jpg", [220, 220, 220, 255]),
     floor: loadTexture(gl, "../assets/textures/floor.jpg", [139, 69, 19, 255]),
     livingRoom: loadTexture(gl, "../assets/textures/living_room.jpg", [240, 230, 210, 255]),
-    dining: loadTexture(gl, "../assets/textures/dining.jpg", [230, 220, 200, 255]),
-    kitchen: loadTexture(gl, "../assets/textures/kitchen.jpg", [220, 240, 240, 255]),
     screenmesh: loadTexture(gl, "../assets/textures/screenmesh.png", [128, 128, 128, 100]),
     rug: loadTexture(gl, "../assets/textures/rug.png", [133, 110, 95, 255]),
   };
 
   // --- HOUSE ---
-  const house = new House(gl, 
+  const house = new House(gl,
     { program: solidProgram, locs: solidLocs }, // Solid Resources
     { program: texProgram, locs: texLocs },     // Texture Resources
     houseTextures
@@ -310,7 +308,7 @@ function main() {
     }
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    
+
     // Enable Depth testing and standard alpha blending for semi-transparent objects (screen doors, windows, etc...)
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
@@ -347,7 +345,7 @@ function main() {
 
     // --- DRAW COMPONENTS ---
     skybox.draw(projectionMatrix, viewMatrix);
-    
+
     gl.depthFunc(gl.LESS);
     const viewProjection = mat4.multiply(mat4.create(), projectionMatrix, viewMatrix);
     floor.draw(gl, viewProjection);
