@@ -341,7 +341,7 @@ class House extends Node {
     this.interiorStairs.setTransform([7.8, 0, 9.6], Math.PI);
 
     // --- Living Room Furniture ---
-    this.livingRoomTV = new Television(gl, solidRes);
+    this.livingRoomTV = new Television(gl, solidRes, texRes);
     this.livingRoomTV.setParent(this);
     this.livingRoomTV.setTransform([-5.0, -1.9, 8.0], Math.PI / 2);
 
