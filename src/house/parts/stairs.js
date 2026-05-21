@@ -150,7 +150,7 @@ class Sphere extends Node {
 }
 
 class InteriorStairs extends Node {
-  constructor(gl, solidRes, texRes, length = 6.5, stepWidth = 4.5, stepCount = 14) {
+  constructor(gl, solidRes, texRes, length = 8.5, stepWidth = 4.5, stepCount = 14) {
     super();
 
     this.length = length;
