@@ -275,8 +275,8 @@ class House extends Node {
 
     this.livingRoomCeilingLeft = new Wall(gl, solidRes.program, solidRes.locs, ceilingColor);
     this.livingRoomCeilingLeft.setParent(this);
-    this.livingRoomCeilingLeft.translate([-2.5, 5, 8]);  // left ceiling panel around stair opening
-    this.livingRoomCeilingLeft.scale([16, 0.2, 14]);
+    this.livingRoomCeilingLeft.translate([-2.2, 5, 8]);  // left ceiling panel around stair opening
+    this.livingRoomCeilingLeft.scale([15.5, 0.2, 14]);
 
     this.livingRoomCeilingRight = new Wall(gl, solidRes.program, solidRes.locs, ceilingColor);
     this.livingRoomCeilingRight.setParent(this);
