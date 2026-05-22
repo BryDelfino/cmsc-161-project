@@ -54,6 +54,10 @@ class MeshNode extends Node {
   constructor(meshInfo) {
     super();
     this.meshInfo = meshInfo;
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
   }
 
   draw(gl, projectionViewMatrix) {
@@ -66,6 +70,23 @@ class MeshNode extends Node {
 
     const mvpMatrix = mat4.multiply(mat4.create(), projectionViewMatrix, this.worldMatrix);
     gl.uniformMatrix4fv(locs.matrix, false, mvpMatrix);
+
+    if (locs.worldMatrix) {
+      gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (locs.shininess) {
+      gl.uniform1f(locs.shininess, this.shininess);
+    }
+    if (locs.specularStrength) {
+      gl.uniform1f(locs.specularStrength, this.specularStrength);
+    }
+    if (locs.emissive) {
+      gl.uniform1f(locs.emissive, this.emissive);
+    }
+    if (locs.twoSided) {
+      gl.uniform1f(locs.twoSided, this.twoSided);
+    }
+
     gl.uniform4fv(locs.color, color);
 
     gl.drawArrays(gl.TRIANGLES, 0, count);
@@ -77,6 +98,10 @@ class TexturedMeshNode extends Node {
   constructor(meshInfo) {
     super();
     this.meshInfo = meshInfo; // { program, locs, posBuffer, uvBuffer, texture, count }
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
   }
 
   draw(gl, projectionViewMatrix) {
@@ -107,6 +132,22 @@ class TexturedMeshNode extends Node {
 
     const mvpMatrix = mat4.multiply(mat4.create(), projectionViewMatrix, this.worldMatrix);
     gl.uniformMatrix4fv(locs.matrix, false, mvpMatrix);
+
+    if (locs.worldMatrix) {
+      gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (locs.shininess) {
+      gl.uniform1f(locs.shininess, this.shininess);
+    }
+    if (locs.specularStrength) {
+      gl.uniform1f(locs.specularStrength, this.specularStrength);
+    }
+    if (locs.emissive) {
+      gl.uniform1f(locs.emissive, this.emissive);
+    }
+    if (locs.twoSided) {
+      gl.uniform1f(locs.twoSided, this.twoSided);
+    }
 
     gl.drawArrays(gl.TRIANGLES, 0, count);
   }
