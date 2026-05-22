@@ -30,6 +30,11 @@ function main() {
   const gl = canvas.getContext("webgl");
   if (!gl) return;
 
+  const ext = gl.getExtension('OES_standard_derivatives');
+  if (!ext) {
+    console.error('OES_standard_derivatives not supported');
+  }
+
   // 1. SETUP PROGRAMS
   const skyboxProgram = createProgram(gl, vertexShaderSource, fragmentShaderSource);
   const solidProgram = createProgram(gl, solidVertexShaderSource, solidFragmentShaderSource);
@@ -46,6 +51,24 @@ function main() {
     pos: gl.getAttribLocation(solidProgram, "a_position"),
     matrix: gl.getUniformLocation(solidProgram, "u_matrix"),
     color: gl.getUniformLocation(solidProgram, "u_color"),
+    worldMatrix: gl.getUniformLocation(solidProgram, "u_worldMatrix"),
+    shininess: gl.getUniformLocation(solidProgram, "u_shininess"),
+    specularStrength: gl.getUniformLocation(solidProgram, "u_specularStrength"),
+    emissive: gl.getUniformLocation(solidProgram, "u_emissive"),
+    twoSided: gl.getUniformLocation(solidProgram, "u_twoSided"),
+    viewPosition: gl.getUniformLocation(solidProgram, "u_viewPosition"),
+    ambientLightDir: gl.getUniformLocation(solidProgram, "u_ambientLightDir"),
+    ambientLightColor: gl.getUniformLocation(solidProgram, "u_ambientLightColor"),
+    ceilingLightPos: gl.getUniformLocation(solidProgram, "u_ceilingLightPos"),
+    ceilingLightColor: gl.getUniformLocation(solidProgram, "u_ceilingLightColor"),
+    ceilingLightOn: gl.getUniformLocation(solidProgram, "u_ceilingLightOn"),
+    lampLightPos: gl.getUniformLocation(solidProgram, "u_lampLightPos"),
+    lampLightColor: gl.getUniformLocation(solidProgram, "u_lampLightColor"),
+    lampLightOn: gl.getUniformLocation(solidProgram, "u_lampLightOn"),
+    tvLightDir: gl.getUniformLocation(solidProgram, "u_tvLightDir"),
+    tvLightPos: gl.getUniformLocation(solidProgram, "u_tvLightPos"),
+    tvLightColor: gl.getUniformLocation(solidProgram, "u_tvLightColor"),
+    tvLightOn: gl.getUniformLocation(solidProgram, "u_tvLightOn"),
   };
 
   const texLocs = {
@@ -55,6 +78,24 @@ function main() {
     tex: gl.getUniformLocation(texProgram, "u_texture"),
     uvScale: gl.getUniformLocation(texProgram, "u_uvScale"),
     uvOffset: gl.getUniformLocation(texProgram, "u_uvOffset"),
+    worldMatrix: gl.getUniformLocation(texProgram, "u_worldMatrix"),
+    shininess: gl.getUniformLocation(texProgram, "u_shininess"),
+    specularStrength: gl.getUniformLocation(texProgram, "u_specularStrength"),
+    emissive: gl.getUniformLocation(texProgram, "u_emissive"),
+    twoSided: gl.getUniformLocation(texProgram, "u_twoSided"),
+    viewPosition: gl.getUniformLocation(texProgram, "u_viewPosition"),
+    ambientLightDir: gl.getUniformLocation(texProgram, "u_ambientLightDir"),
+    ambientLightColor: gl.getUniformLocation(texProgram, "u_ambientLightColor"),
+    ceilingLightPos: gl.getUniformLocation(texProgram, "u_ceilingLightPos"),
+    ceilingLightColor: gl.getUniformLocation(texProgram, "u_ceilingLightColor"),
+    ceilingLightOn: gl.getUniformLocation(texProgram, "u_ceilingLightOn"),
+    lampLightPos: gl.getUniformLocation(texProgram, "u_lampLightPos"),
+    lampLightColor: gl.getUniformLocation(texProgram, "u_lampLightColor"),
+    lampLightOn: gl.getUniformLocation(texProgram, "u_lampLightOn"),
+    tvLightDir: gl.getUniformLocation(texProgram, "u_tvLightDir"),
+    tvLightPos: gl.getUniformLocation(texProgram, "u_tvLightPos"),
+    tvLightColor: gl.getUniformLocation(texProgram, "u_tvLightColor"),
+    tvLightOn: gl.getUniformLocation(texProgram, "u_tvLightOn"),
   };
 
   // 3. INITIALIZE COMPONENTS
@@ -290,6 +331,77 @@ function main() {
     }
   });
 
+  function setupLightingUniforms() {
+    const ceilingLightPos = vec3.create();
+    if (house.ceilingLight && house.ceilingLight.bulb) {
+      vec3.set(ceilingLightPos,
+        house.ceilingLight.bulb.worldMatrix[12],
+        house.ceilingLight.bulb.worldMatrix[13],
+        house.ceilingLight.bulb.worldMatrix[14]
+      );
+    }
+
+    const lampLightPos = vec3.create();
+    if (house.livingRoomLamp && house.livingRoomLamp.bulb1 && house.livingRoomLamp.bulb2) {
+      const b1 = house.livingRoomLamp.bulb1.worldMatrix;
+      const b2 = house.livingRoomLamp.bulb2.worldMatrix;
+      vec3.set(lampLightPos,
+        (b1[12] + b2[12]) / 2,
+        (b1[13] + b2[13]) / 2,
+        (b1[14] + b2[14]) / 2
+      );
+    }
+
+    const tvLightDir = vec3.create();
+    const tvLightPos = vec3.create();
+    if (house.livingRoomTV && house.livingRoomTV.screen) {
+      const tvMat = house.livingRoomTV.screen.worldMatrix;
+      vec3.set(tvLightDir, tvMat[8], tvMat[9], tvMat[10]);
+      vec3.normalize(tvLightDir, tvLightDir);
+      vec3.set(tvLightPos, tvMat[12], tvMat[13], tvMat[14]);
+    }
+
+    const ceilingOn = house.ceilingLight && house.ceilingLight.isOn;
+    const lampOn = house.livingRoomLamp && house.livingRoomLamp.isOn;
+    let tvIntensity = 0.5; // default for both OFF
+    if (ceilingOn && lampOn) {
+      tvIntensity = 0.08;
+    } else if (ceilingOn || lampOn) {
+      tvIntensity = 0.2;
+    }
+    const tvColor = [0.5 * tvIntensity, 0.7 * tvIntensity, 1.0 * tvIntensity];
+
+    gl.useProgram(solidProgram);
+    gl.uniform3fv(solidLocs.viewPosition, camera.position);
+    gl.uniform3fv(solidLocs.ambientLightDir, [0.385, -0.206, -0.900]);
+    gl.uniform3fv(solidLocs.ambientLightColor, [0.9, 0.45, 0.2]);
+    gl.uniform3fv(solidLocs.ceilingLightPos, ceilingLightPos);
+    gl.uniform3fv(solidLocs.ceilingLightColor, [1.0, 0.98, 0.8]);
+    gl.uniform1f(solidLocs.ceilingLightOn, ceilingOn ? 1.0 : 0.0);
+    gl.uniform3fv(solidLocs.lampLightPos, lampLightPos);
+    gl.uniform3fv(solidLocs.lampLightColor, [1.0, 0.95, 0.6]);
+    gl.uniform1f(solidLocs.lampLightOn, lampOn ? 1.0 : 0.0);
+    gl.uniform3fv(solidLocs.tvLightDir, tvLightDir);
+    gl.uniform3fv(solidLocs.tvLightPos, tvLightPos);
+    gl.uniform3fv(solidLocs.tvLightColor, tvColor);
+    gl.uniform1f(solidLocs.tvLightOn, house.livingRoomTV.isOn ? 1.0 : 0.0);
+
+    gl.useProgram(texProgram);
+    gl.uniform3fv(texLocs.viewPosition, camera.position);
+    gl.uniform3fv(texLocs.ambientLightDir, [0.385, -0.206, -0.900]);
+    gl.uniform3fv(texLocs.ambientLightColor, [0.9, 0.45, 0.2]);
+    gl.uniform3fv(texLocs.ceilingLightPos, ceilingLightPos);
+    gl.uniform3fv(texLocs.ceilingLightColor, [1.0, 0.98, 0.8]);
+    gl.uniform1f(texLocs.ceilingLightOn, ceilingOn ? 1.0 : 0.0);
+    gl.uniform3fv(texLocs.lampLightPos, lampLightPos);
+    gl.uniform3fv(texLocs.lampLightColor, [1.0, 0.95, 0.6]);
+    gl.uniform1f(texLocs.lampLightOn, lampOn ? 1.0 : 0.0);
+    gl.uniform3fv(texLocs.tvLightDir, tvLightDir);
+    gl.uniform3fv(texLocs.tvLightPos, tvLightPos);
+    gl.uniform3fv(texLocs.tvLightColor, tvColor);
+    gl.uniform1f(texLocs.tvLightOn, house.livingRoomTV.isOn ? 1.0 : 0.0);
+  }
+
   let then = 0;
   function render(time) {
     time *= 0.001;
@@ -313,6 +425,9 @@ function main() {
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // Setup lighting uniforms dynamically per frame
+    setupLightingUniforms();
 
     // Update HUD overlay interaction prompt based on door/lightswitch/lamp/TV proximity
     const promptDiv = document.querySelector("#interaction-prompt");
