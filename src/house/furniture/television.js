@@ -149,7 +149,7 @@ class Television extends Node {
     // Bottom of the legs will sit at local Y = 0.
     // Total height of legs = 0.4.
     // Cabinet is centered at Y = 0.4 + 0.65 = 1.05.
-    this.cabinet = new Wall(gl, solidRes.program, solidRes.locs, [0.28, 0.18, 0.11, 1.0]);
+    this.cabinet = new Wall(gl, solidRes.program, solidRes.locs, [0.65, 0.45, 0.28, 1.0]);
     this.cabinet.setParent(this);
     this.cabinet.translate([0, 1.05, 0]);
     this.cabinet.scale([1.6, 1.3, 1.0]);
@@ -198,16 +198,40 @@ class Television extends Node {
     this.panel.translate([0.5, 1.1, 0.51]);
     this.panel.scale([0.25, 0.9, 0.02]);
 
-    // Knobs: Two round metallic dials
-    this.knob1 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.05, 0.05, 0.04, 12, [0.6, 0.6, 0.6, 1.0]);
-    this.knob1.setParent(this);
-    this.knob1.translate([0.5, 1.3, 0.53]);
-    this.knob1.rotate(Math.PI / 2, [1, 0, 0]); // rotate to face forward
+    // Main Knob: bigger knob with a handle
+    this.mainKnob = new Cylinder(gl, solidRes.program, solidRes.locs, 0.06, 0.06, 0.04, 16, [0.4, 0.4, 0.4, 1.0]);
+    this.mainKnob.setParent(this);
+    this.mainKnob.translate([0.5, 1.4, 0.53]);
+    this.mainKnob.rotate(Math.PI / 2, [1, 0, 0]); // rotate to face forward
 
-    this.knob2 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.05, 0.05, 0.04, 12, [0.6, 0.6, 0.6, 1.0]);
+    this.mainKnobHandle = new Wall(gl, solidRes.program, solidRes.locs, [0.75, 0.75, 0.75, 1.0]);
+    this.mainKnobHandle.setParent(this.mainKnob);
+    this.mainKnobHandle.translate([0, 0.03, 0]); // bottom of handle is on top cap
+    this.mainKnobHandle.scale([0.02, 0.02, 0.10]); // rectangular bar across face
+
+    // Buttons (formerly knobs): Two smaller round buttons
+    this.knob1 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.035, 0.035, 0.03, 12, [0.6, 0.6, 0.6, 1.0]);
+    this.knob1.setParent(this);
+    this.knob1.translate([0.5, 1.22, 0.53]);
+    this.knob1.rotate(Math.PI / 2, [1, 0, 0]);
+
+    this.knob2 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.035, 0.035, 0.03, 12, [0.6, 0.6, 0.6, 1.0]);
     this.knob2.setParent(this);
-    this.knob2.translate([0.5, 1.1, 0.53]);
+    this.knob2.translate([0.5, 1.05, 0.53]);
     this.knob2.rotate(Math.PI / 2, [1, 0, 0]);
+
+    // CRT Back Cone & Neck
+    this.crtCone = new Cylinder(gl, solidRes.program, solidRes.locs, 0.35, 0.15, 0.4, 16, [0.35, 0.35, 0.35, 1.0]);
+    this.crtCone.setParent(this);
+    this.crtCone.translate([0, 1.0, -0.7]);
+    this.crtCone.scale([1.5, 1.5, 1.5]);
+    this.crtCone.rotate(Math.PI / 2, [1, 0, 0]);
+
+    this.crtNeck = new Cylinder(gl, solidRes.program, solidRes.locs, 0.08, 0.08, 0.15, 12, [0.35, 0.35, 0.35, 1.0]);
+    this.crtNeck.setParent(this.crtCone);
+    this.crtNeck.translate([0, -0.275, 0]);
+    this.crtNeck.scale([1.0, 1.0, 1.0]);
+    this.crtNeck.rotate(0, [1, 0, 0]);
 
     // Speaker grille: horizontal bars
     this.grille = new Wall(gl, solidRes.program, solidRes.locs, [0.1, 0.1, 0.1, 1.0]);
@@ -240,7 +264,7 @@ class Television extends Node {
       [0.6, 0.2, -0.35]
     ];
     legCoords.forEach((coord) => {
-      const leg = new Cylinder(gl, solidRes.program, solidRes.locs, 0.04, 0.02, 0.4, 8, [0.2, 0.15, 0.1, 1.0]);
+      const leg = new Cylinder(gl, solidRes.program, solidRes.locs, 0.04, 0.02, 0.4, 8, [0.55, 0.38, 0.23, 1.0]);
       leg.setParent(this);
       leg.translate(coord);
       // Angle them outward slightly
@@ -252,14 +276,14 @@ class Television extends Node {
     });
 
     this.isOn = false;
-    this.currentKnobAngle = 0.0;
-    this.targetKnobAngle = 0.0;
+    this.buttonPushTimer = 0.0;
+    this.buttonPushDuration = 0.25;
     this.scale([0.4, 0.4, 0.4]);
   }
 
   toggle() {
     this.isOn = !this.isOn;
-    this.targetKnobAngle = this.isOn ? Math.PI / 4 : 0.0;
+    this.buttonPushTimer = this.buttonPushDuration;
     this.updateVisuals();
     console.log("Television toggled:", this.isOn ? "ON" : "OFF");
   }
@@ -279,11 +303,8 @@ class Television extends Node {
   }
 
   update(deltaTime) {
-    const knobSpeed = 12.0;
-    if (this.currentKnobAngle < this.targetKnobAngle) {
-      this.currentKnobAngle = Math.min(this.targetKnobAngle, this.currentKnobAngle + knobSpeed * deltaTime);
-    } else if (this.currentKnobAngle > this.targetKnobAngle) {
-      this.currentKnobAngle = Math.max(this.targetKnobAngle, this.currentKnobAngle - knobSpeed * deltaTime);
+    if (this.buttonPushTimer > 0) {
+      this.buttonPushTimer = Math.max(0.0, this.buttonPushTimer - deltaTime);
     }
 
     // Update video texture each frame when TV is on
@@ -300,10 +321,10 @@ class Television extends Node {
     }
 
     if (this.knob1) {
+      const pushDepth = 0.025 * Math.sin((this.buttonPushTimer / this.buttonPushDuration) * Math.PI);
       this.knob1.localMatrix = mat4.create();
-      mat4.translate(this.knob1.localMatrix, this.knob1.localMatrix, [0.5, 1.3, 0.53]);
+      mat4.translate(this.knob1.localMatrix, this.knob1.localMatrix, [0.5, 1.22, 0.53 - pushDepth]);
       mat4.rotateX(this.knob1.localMatrix, this.knob1.localMatrix, Math.PI / 2);
-      mat4.rotateZ(this.knob1.localMatrix, this.knob1.localMatrix, this.currentKnobAngle);
     }
   }
 
@@ -372,8 +393,12 @@ class Television extends Node {
       this.screen.draw(gl, viewProjection, this.blackTexture);
     }
     this.panel.draw(gl, viewProjection);
+    this.mainKnob.draw(gl, viewProjection);
+    this.mainKnobHandle.draw(gl, viewProjection);
     this.knob1.draw(gl, viewProjection);
     this.knob2.draw(gl, viewProjection);
+    this.crtCone.draw(gl, viewProjection);
+    this.crtNeck.draw(gl, viewProjection);
     this.grille.draw(gl, viewProjection);
     this.antennaBase.draw(gl, viewProjection);
     this.rodLeft.draw(gl, viewProjection);
