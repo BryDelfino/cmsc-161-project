@@ -31,8 +31,8 @@ class Window extends Node {
     const h = this.height;
     const t = this.thickness;
 
-    // Wooden frame color: elegant wainscoting brown
-    const frameColor = [139 / 255, 90 / 255, 43 / 255, 1.0];
+    // Wooden frame color: light brown
+    const frameColor = [0.65, 0.45, 0.28, 1.0];
     const frameThickness = 0.22; // slightly thicker than 0.2 wall to avoid z-fighting
     const border = 0.1; // border thickness of the frame
 
