@@ -3,6 +3,8 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
   const vertexData = [];
   const indexData = [];
 
+  const drdy = (radiusTop - radiusBottom) / height;
+
   // Generate side vertices
   for (let i = 0; i <= radialSegments; i++) {
     const angle = (i / radialSegments) * 2 * Math.PI;
@@ -10,17 +12,23 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
     const cos = Math.cos(angle);
     const u = i / radialSegments;
 
+    // Normal calculation: outwards
+    const len = Math.sqrt(cos * cos + drdy * drdy + sin * sin);
+    const nx = cos / len;
+    const ny = -drdy / len;
+    const nz = sin / len;
+
     // Top vertex
     const xTop = cos * radiusTop;
     const zTop = sin * radiusTop;
     const yTop = height / 2;
-    vertexData.push(xTop, yTop, zTop, 1.0, u, 1.0);
+    vertexData.push(xTop, yTop, zTop, 1.0, u, 1.0, nx, ny, nz);
 
     // Bottom vertex
     const xBot = cos * radiusBottom;
     const zBot = sin * radiusBottom;
     const yBot = -height / 2;
-    vertexData.push(xBot, yBot, zBot, 1.0, u, 0.0);
+    vertexData.push(xBot, yBot, zBot, 1.0, u, 0.0, nx, ny, nz);
   }
 
   // Generate side indices
@@ -37,11 +45,11 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
     indexData.push(idxTopCurrent, idxBotNext, idxTopNext);
   }
 
-  // Cap indices offsets
-  const capStartIdx = vertexData.length / 6;
+  // Cap indices offsets (divide by 9 because stride is now 9)
+  const capStartIdx = vertexData.length / 9;
 
   // Top Cap Center
-  vertexData.push(0, height / 2, 0, 1.0, 0.5, 0.5);
+  vertexData.push(0, height / 2, 0, 1.0, 0.5, 0.5, 0, 1, 0);
   // Top Cap perimeter
   for (let i = 0; i <= radialSegments; i++) {
     const angle = (i / radialSegments) * 2 * Math.PI;
@@ -49,7 +57,7 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
     const cos = Math.cos(angle);
     const u = (cos + 1) / 2;
     const v = (sin + 1) / 2;
-    vertexData.push(cos * radiusTop, height / 2, sin * radiusTop, 1.0, u, v);
+    vertexData.push(cos * radiusTop, height / 2, sin * radiusTop, 1.0, u, v, 0, 1, 0);
   }
   // Top Cap Triangles
   const centerTopIdx = capStartIdx;
@@ -58,8 +66,8 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
   }
 
   // Bottom Cap Center
-  const botCapStartIdx = vertexData.length / 6;
-  vertexData.push(0, -height / 2, 0, 1.0, 0.5, 0.5);
+  const botCapStartIdx = vertexData.length / 9;
+  vertexData.push(0, -height / 2, 0, 1.0, 0.5, 0.5, 0, -1, 0);
   // Bottom Cap perimeter
   for (let i = 0; i <= radialSegments; i++) {
     const angle = (i / radialSegments) * 2 * Math.PI;
@@ -67,7 +75,7 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
     const cos = Math.cos(angle);
     const u = (cos + 1) / 2;
     const v = (sin + 1) / 2;
-    vertexData.push(cos * radiusBottom, -height / 2, sin * radiusBottom, 1.0, u, v);
+    vertexData.push(cos * radiusBottom, -height / 2, sin * radiusBottom, 1.0, u, v, 0, -1, 0);
   }
   // Bottom Cap Triangles
   const centerBotIdx = botCapStartIdx;
@@ -109,12 +117,17 @@ class Cylinder extends Node {
     gl.useProgram(this.program);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
-    gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 24, 0);
+    gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 36, 0);
     gl.enableVertexAttribArray(this.locs.pos);
 
     if (this.locs.uv !== undefined && this.locs.uv !== -1) {
-      gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 24, 16);
+      gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 36, 16);
       gl.enableVertexAttribArray(this.locs.uv);
+    }
+
+    if (this.locs.normal !== undefined && this.locs.normal !== -1) {
+      gl.vertexAttribPointer(this.locs.normal, 3, gl.FLOAT, false, 36, 24);
+      gl.enableVertexAttribArray(this.locs.normal);
     }
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
@@ -122,6 +135,12 @@ class Cylinder extends Node {
 
     if (this.locs.worldMatrix) {
       gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (this.locs.worldInverseTranspose) {
+      const normalMatrix = mat4.create();
+      mat4.invert(normalMatrix, this.worldMatrix);
+      mat4.transpose(normalMatrix, normalMatrix);
+      gl.uniformMatrix4fv(this.locs.worldInverseTranspose, false, normalMatrix);
     }
     if (this.locs.shininess) {
       gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);

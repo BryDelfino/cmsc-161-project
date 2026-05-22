@@ -74,6 +74,12 @@ class MeshNode extends Node {
     if (locs.worldMatrix) {
       gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
     }
+    if (locs.worldInverseTranspose) {
+      const normalMatrix = mat4.create();
+      mat4.invert(normalMatrix, this.worldMatrix);
+      mat4.transpose(normalMatrix, normalMatrix);
+      gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
+    }
     if (locs.shininess) {
       gl.uniform1f(locs.shininess, this.shininess);
     }
@@ -97,7 +103,7 @@ class MeshNode extends Node {
 class TexturedMeshNode extends Node {
   constructor(meshInfo) {
     super();
-    this.meshInfo = meshInfo; // { program, locs, posBuffer, uvBuffer, texture, count }
+    this.meshInfo = meshInfo; // { program, locs, posBuffer, uvBuffer, normalBuffer, texture, count }
     this.shininess = 1.0;
     this.specularStrength = 0.0;
     this.emissive = 0.0;
@@ -105,7 +111,7 @@ class TexturedMeshNode extends Node {
   }
 
   draw(gl, projectionViewMatrix) {
-    const { program, locs, posBuffer, uvBuffer, texture, count } = this.meshInfo;
+    const { program, locs, posBuffer, uvBuffer, normalBuffer, texture, count } = this.meshInfo;
     gl.useProgram(program);
 
     // Positions
@@ -117,6 +123,13 @@ class TexturedMeshNode extends Node {
     gl.enableVertexAttribArray(locs.uv);
     gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
     gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 0, 0);
+
+    // Normals
+    if (locs.normal !== undefined && locs.normal !== -1 && normalBuffer) {
+      gl.enableVertexAttribArray(locs.normal);
+      gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+      gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 0, 0);
+    }
 
     // Texture
     gl.activeTexture(gl.TEXTURE0);
@@ -135,6 +148,12 @@ class TexturedMeshNode extends Node {
 
     if (locs.worldMatrix) {
       gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (locs.worldInverseTranspose) {
+      const normalMatrix = mat4.create();
+      mat4.invert(normalMatrix, this.worldMatrix);
+      mat4.transpose(normalMatrix, normalMatrix);
+      gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
     }
     if (locs.shininess) {
       gl.uniform1f(locs.shininess, this.shininess);

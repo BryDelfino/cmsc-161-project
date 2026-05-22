@@ -54,7 +54,7 @@ class Stairs extends Node {
   }
 }
 
-// Helper to generate sphere vertex attributes for WebGL (Position + UV format compatible with Wall)
+// Helper to generate sphere vertex attributes for WebGL (Position + UV + Normal format)
 function createSphereGeometry(gl, radius, latitudeBands, longitudeBands) {
   const vertexData = [];
   const indexData = [];
@@ -75,8 +75,8 @@ function createSphereGeometry(gl, radius, latitudeBands, longitudeBands) {
       const u = 1 - (longNumber / longitudeBands);
       const v = 1 - (latNumber / latitudeBands);
 
-      // Stride compatible with Wall: X, Y, Z, W, U, V
-      vertexData.push(x * radius, y * radius, z * radius, 1.0, u, v);
+      // Stride: X, Y, Z, W, U, V, NX, NY, NZ
+      vertexData.push(x * radius, y * radius, z * radius, 1.0, u, v, x, y, z);
     }
   }
 
@@ -122,12 +122,17 @@ class Sphere extends Node {
     gl.useProgram(this.program);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
-    gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 24, 0);
+    gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 36, 0);
     gl.enableVertexAttribArray(this.locs.pos);
 
     if (this.locs.uv !== undefined && this.locs.uv !== -1) {
-      gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 24, 16);
+      gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 36, 16);
       gl.enableVertexAttribArray(this.locs.uv);
+    }
+
+    if (this.locs.normal !== undefined && this.locs.normal !== -1) {
+      gl.vertexAttribPointer(this.locs.normal, 3, gl.FLOAT, false, 36, 24);
+      gl.enableVertexAttribArray(this.locs.normal);
     }
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
@@ -135,6 +140,12 @@ class Sphere extends Node {
 
     if (this.locs.worldMatrix) {
       gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (this.locs.worldInverseTranspose) {
+      const normalMatrix = mat4.create();
+      mat4.invert(normalMatrix, this.worldMatrix);
+      mat4.transpose(normalMatrix, normalMatrix);
+      gl.uniformMatrix4fv(this.locs.worldInverseTranspose, false, normalMatrix);
     }
     if (this.locs.shininess) {
       gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);

@@ -23,20 +23,24 @@ const fragmentShaderSource = `
 // 2. SOLID COLOR SHADERS
 const solidVertexShaderSource = `
   attribute vec4 a_position;
+  attribute vec3 a_normal;
   uniform mat4 u_matrix;
   uniform mat4 u_worldMatrix;
+  uniform mat4 u_worldInverseTranspose;
   varying vec3 v_worldPos;
+  varying vec3 v_normal;
   void main() {
     gl_Position = u_matrix * a_position;
     v_worldPos = (u_worldMatrix * a_position).xyz;
+    v_normal = (u_worldInverseTranspose * vec4(a_normal, 0.0)).xyz;
   }
 `;
 
 const solidFragmentShaderSource = `
-  #extension GL_OES_standard_derivatives : enable
   precision mediump float;
   
   varying vec3 v_worldPos;
+  varying vec3 v_normal;
   uniform vec4 u_color;
   
   // Lighting uniforms
@@ -69,7 +73,7 @@ const solidFragmentShaderSource = `
   uniform float u_twoSided;
   
   void main() {
-    vec3 normal = normalize(cross(dFdx(v_worldPos), dFdy(v_worldPos)));
+    vec3 normal = normalize(v_normal);
     vec3 viewDir = normalize(u_viewPosition - v_worldPos);
     if (dot(normal, viewDir) < 0.0) {
       normal = -normal;
@@ -144,23 +148,27 @@ const solidFragmentShaderSource = `
 const texVertexShaderSource = `
   attribute vec4 a_position;
   attribute vec2 a_texcoord;
+  attribute vec3 a_normal;
   uniform mat4 u_matrix;
   uniform mat4 u_worldMatrix;
+  uniform mat4 u_worldInverseTranspose;
   varying vec3 v_worldPos;
   varying vec2 v_texcoord;
+  varying vec3 v_normal;
   void main() {
     gl_Position = u_matrix * a_position;
     v_worldPos = (u_worldMatrix * a_position).xyz;
     v_texcoord = a_texcoord;
+    v_normal = (u_worldInverseTranspose * vec4(a_normal, 0.0)).xyz;
   }
 `;
 
 const texFragmentShaderSource = `
-  #extension GL_OES_standard_derivatives : enable
   precision mediump float;
   
   varying vec3 v_worldPos;
   varying vec2 v_texcoord;
+  varying vec3 v_normal;
   
   uniform sampler2D u_texture;
   uniform vec2 u_uvScale;
@@ -196,7 +204,7 @@ const texFragmentShaderSource = `
   uniform float u_twoSided;
   
   void main() {
-    vec3 normal = normalize(cross(dFdx(v_worldPos), dFdy(v_worldPos)));
+    vec3 normal = normalize(v_normal);
     vec3 viewDir = normalize(u_viewPosition - v_worldPos);
     if (dot(normal, viewDir) < 0.0) {
       normal = -normal;

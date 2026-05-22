@@ -10,40 +10,40 @@ class Column extends MeshNode {
     // to rotate the wood siding texture by exactly 90 degrees on all column sides!
     const vertices = new Float32Array([
       // Front face
-      -0.5, -0.5, 0.5, 1, 0, 0,
-      0.5, -0.5, 0.5, 1, 0, 1,
-      0.5, 0.5, 0.5, 1, 1, 1,
-      -0.5, 0.5, 0.5, 1, 1, 0,
+      -0.5, -0.5, 0.5, 1, 0, 0,  0, 0, 1,
+      0.5, -0.5, 0.5, 1, 0, 1,  0, 0, 1,
+      0.5, 0.5, 0.5, 1, 1, 1,  0, 0, 1,
+      -0.5, 0.5, 0.5, 1, 1, 0,  0, 0, 1,
 
       // Back face
-      -0.5, -0.5, -0.5, 1, 0, 0,
-      -0.5, 0.5, -0.5, 1, 1, 0,
-      0.5, 0.5, -0.5, 1, 1, 1,
-      0.5, -0.5, -0.5, 1, 0, 1,
+      -0.5, -0.5, -0.5, 1, 0, 0,  0, 0, -1,
+      -0.5, 0.5, -0.5, 1, 1, 0,  0, 0, -1,
+      0.5, 0.5, -0.5, 1, 1, 1,  0, 0, -1,
+      0.5, -0.5, -0.5, 1, 0, 1,  0, 0, -1,
 
       // Top face
-      -0.5, 0.5, -0.5, 1, 0, 0,
-      -0.5, 0.5, 0.5, 1, 0, 1,
-      0.5, 0.5, 0.5, 1, 1, 1,
-      0.5, 0.5, -0.5, 1, 1, 0,
+      -0.5, 0.5, -0.5, 1, 0, 0,  0, 1, 0,
+      -0.5, 0.5, 0.5, 1, 0, 1,  0, 1, 0,
+      0.5, 0.5, 0.5, 1, 1, 1,  0, 1, 0,
+      0.5, 0.5, -0.5, 1, 1, 0,  0, 1, 0,
 
       // Bottom face
-      -0.5, -0.5, -0.5, 1, 0, 0,
-      0.5, -0.5, -0.5, 1, 1, 0,
-      0.5, -0.5, 0.5, 1, 1, 1,
-      -0.5, -0.5, 0.5, 1, 0, 1,
+      -0.5, -0.5, -0.5, 1, 0, 0,  0, -1, 0,
+      0.5, -0.5, -0.5, 1, 1, 0,  0, -1, 0,
+      0.5, -0.5, 0.5, 1, 1, 1,  0, -1, 0,
+      -0.5, -0.5, 0.5, 1, 0, 1,  0, -1, 0,
 
       // Right face
-      0.5, -0.5, -0.5, 1, 0, 0,
-      0.5, 0.5, -0.5, 1, 1, 0,
-      0.5, 0.5, 0.5, 1, 1, 1,
-      0.5, -0.5, 0.5, 1, 0, 1,
+      0.5, -0.5, -0.5, 1, 0, 0,  1, 0, 0,
+      0.5, 0.5, -0.5, 1, 1, 0,  1, 0, 0,
+      0.5, 0.5, 0.5, 1, 1, 1,  1, 0, 0,
+      0.5, -0.5, 0.5, 1, 0, 1,  1, 0, 0,
 
       // Left face
-      -0.5, -0.5, -0.5, 1, 0, 0,
-      -0.5, -0.5, 0.5, 1, 0, 1,
-      -0.5, 0.5, 0.5, 1, 1, 1,
-      -0.5, 0.5, -0.5, 1, 1, 0,
+      -0.5, -0.5, -0.5, 1, 0, 0, -1, 0, 0,
+      -0.5, -0.5, 0.5, 1, 0, 1, -1, 0, 0,
+      -0.5, 0.5, 0.5, 1, 1, 1, -1, 0, 0,
+      -0.5, 0.5, -0.5, 1, 1, 0, -1, 0, 0,
     ]);
 
     const indices = new Uint16Array([
@@ -73,12 +73,17 @@ class Column extends MeshNode {
     gl.useProgram(this.program);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
-    gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 24, 0);
+    gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 36, 0);
     gl.enableVertexAttribArray(this.locs.pos);
 
     if (this.locs.uv !== undefined && this.locs.uv !== -1) {
-      gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 24, 16);
+      gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 36, 16);
       gl.enableVertexAttribArray(this.locs.uv);
+    }
+
+    if (this.locs.normal !== undefined && this.locs.normal !== -1) {
+      gl.vertexAttribPointer(this.locs.normal, 3, gl.FLOAT, false, 36, 24);
+      gl.enableVertexAttribArray(this.locs.normal);
     }
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
@@ -86,6 +91,12 @@ class Column extends MeshNode {
 
     if (this.locs.worldMatrix) {
       gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (this.locs.worldInverseTranspose) {
+      const normalMatrix = mat4.create();
+      mat4.invert(normalMatrix, this.worldMatrix);
+      mat4.transpose(normalMatrix, normalMatrix);
+      gl.uniformMatrix4fv(this.locs.worldInverseTranspose, false, normalMatrix);
     }
     if (this.locs.shininess) {
       gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);

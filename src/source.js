@@ -30,11 +30,6 @@ function main() {
   const gl = canvas.getContext("webgl");
   if (!gl) return;
 
-  const ext = gl.getExtension('OES_standard_derivatives');
-  if (!ext) {
-    console.error('OES_standard_derivatives not supported');
-  }
-
   // 1. SETUP PROGRAMS
   const skyboxProgram = createProgram(gl, vertexShaderSource, fragmentShaderSource);
   const solidProgram = createProgram(gl, solidVertexShaderSource, solidFragmentShaderSource);
@@ -49,9 +44,11 @@ function main() {
 
   const solidLocs = {
     pos: gl.getAttribLocation(solidProgram, "a_position"),
+    normal: gl.getAttribLocation(solidProgram, "a_normal"),
     matrix: gl.getUniformLocation(solidProgram, "u_matrix"),
     color: gl.getUniformLocation(solidProgram, "u_color"),
     worldMatrix: gl.getUniformLocation(solidProgram, "u_worldMatrix"),
+    worldInverseTranspose: gl.getUniformLocation(solidProgram, "u_worldInverseTranspose"),
     shininess: gl.getUniformLocation(solidProgram, "u_shininess"),
     specularStrength: gl.getUniformLocation(solidProgram, "u_specularStrength"),
     emissive: gl.getUniformLocation(solidProgram, "u_emissive"),
@@ -74,11 +71,13 @@ function main() {
   const texLocs = {
     pos: gl.getAttribLocation(texProgram, "a_position"),
     uv: gl.getAttribLocation(texProgram, "a_texcoord"),
+    normal: gl.getAttribLocation(texProgram, "a_normal"),
     matrix: gl.getUniformLocation(texProgram, "u_matrix"),
     tex: gl.getUniformLocation(texProgram, "u_texture"),
     uvScale: gl.getUniformLocation(texProgram, "u_uvScale"),
     uvOffset: gl.getUniformLocation(texProgram, "u_uvOffset"),
     worldMatrix: gl.getUniformLocation(texProgram, "u_worldMatrix"),
+    worldInverseTranspose: gl.getUniformLocation(texProgram, "u_worldInverseTranspose"),
     shininess: gl.getUniformLocation(texProgram, "u_shininess"),
     specularStrength: gl.getUniformLocation(texProgram, "u_specularStrength"),
     emissive: gl.getUniformLocation(texProgram, "u_emissive"),
