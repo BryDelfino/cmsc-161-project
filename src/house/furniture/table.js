@@ -4,24 +4,48 @@ class SmallTable extends Node {
     this.parts = [];
     const woodColor = [0.4, 0.25, 0.15, 1.0];
 
-    // Feet: cross feet at the bottom (Y = 0 to 0.04, center at 0.02)
-    const foot1 = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
-    foot1.setParent(this);
-    foot1.translate([0, 0.02, 0]);
-    foot1.scale([0.5, 0.04, 0.1]);
-    this.parts.push(foot1);
+    // Legs: 4 traditional legs sitting from Y = 0 to Y = 0.44 (center Y = 0.22)
+    const legPositions = [
+      [-0.2, 0.22, 0.2],
+      [0.2, 0.22, 0.2],
+      [-0.2, 0.22, -0.2],
+      [0.2, 0.22, -0.2]
+    ];
+    legPositions.forEach(pos => {
+      const leg = new Cylinder(gl, solidRes.program, solidRes.locs, 0.025, 0.025, 0.44, 8, woodColor);
+      leg.setParent(this);
+      leg.translate(pos);
+      this.parts.push(leg);
+    });
 
-    const foot2 = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
-    foot2.setParent(this);
-    foot2.translate([0, 0.02, 0]);
-    foot2.scale([0.1, 0.04, 0.5]);
-    this.parts.push(foot2);
+    // Horizontal bars (stretchers) connecting each leg at Y = 0.1
+    // Front bar (X axis)
+    const frontBar = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
+    frontBar.setParent(this);
+    frontBar.translate([0, 0.1, 0.2]);
+    frontBar.scale([0.4, 0.03, 0.03]);
+    this.parts.push(frontBar);
 
-    // Pedestal pillar post: Y = 0.04 to 0.44, height = 0.4, center at 0.24
-    const pillar = new Cylinder(gl, solidRes.program, solidRes.locs, 0.05, 0.05, 0.4, 12, woodColor);
-    pillar.setParent(this);
-    pillar.translate([0, 0.24, 0]);
-    this.parts.push(pillar);
+    // Back bar (X axis)
+    const backBar = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
+    backBar.setParent(this);
+    backBar.translate([0, 0.1, -0.2]);
+    backBar.scale([0.4, 0.03, 0.03]);
+    this.parts.push(backBar);
+
+    // Left bar (Z axis)
+    const leftBar = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
+    leftBar.setParent(this);
+    leftBar.translate([-0.2, 0.1, 0]);
+    leftBar.scale([0.03, 0.03, 0.4]);
+    this.parts.push(leftBar);
+
+    // Right bar (Z axis)
+    const rightBar = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
+    rightBar.setParent(this);
+    rightBar.translate([0.2, 0.1, 0]);
+    rightBar.scale([0.03, 0.03, 0.4]);
+    this.parts.push(rightBar);
 
     // Tabletop: round table top, Y = 0.44 to 0.49, height = 0.05, center at 0.465
     const top = new Cylinder(gl, solidRes.program, solidRes.locs, 0.35, 0.35, 0.05, 16, woodColor);
