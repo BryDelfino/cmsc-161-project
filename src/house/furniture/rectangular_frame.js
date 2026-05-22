@@ -12,7 +12,7 @@ class RectangularPictureFrame extends Node {
     const borderWidth = 0.15; // Thickness of wooden frame border
 
     // Wooden frame color: dark brown
-    const frameColor = [139 / 255, 90 / 255, 43 / 255, 1.0];
+    const frameColor = [0.65, 0.45, 0.28, 1.0];
     // Picture placeholder color: muted blue-gray
     const pictureColor = [169 / 255, 169 / 255, 169 / 255, 1.0];
 
