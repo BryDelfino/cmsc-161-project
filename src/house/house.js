@@ -359,11 +359,11 @@ class House extends Node {
 
     this.livingRoomTable = new SmallTable(gl, solidRes);
     this.livingRoomTable.setParent(this);
-    this.livingRoomTable.setTransform([2.5, -1.9, 8.0], 0);
+    this.livingRoomTable.setTransform([2.5, -1.9, 8.0], Math.PI / 3);
 
     this.livingRoomLamp = new Lamp(gl, solidRes);
     this.livingRoomLamp.setParent(this);
-    this.livingRoomLamp.setTransform([2.7, -1.9, 12.0], 0);
+    this.livingRoomLamp.setTransform([2.7, -1.9, 12.0], -Math.PI / 2);
 
     this.livingRoomClock = new GrandfatherClock(gl, solidRes);
     this.livingRoomClock.setParent(this);
@@ -497,6 +497,7 @@ class House extends Node {
     if (this.doors) this.doors.forEach(door => door.update(deltaTime));
     if (this.lightswitches) this.lightswitches.forEach(sw => sw.update(deltaTime));
     if (this.livingRoomTV && this.livingRoomTV.update) this.livingRoomTV.update(deltaTime);
+    if (this.livingRoomClock && this.livingRoomClock.update) this.livingRoomClock.update(deltaTime);
     // Propagate all local matrix updates down the scenegraph to compute world matrices
     this.updateWorldMatrix(null);
   }
