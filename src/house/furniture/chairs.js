@@ -111,6 +111,12 @@ class RockingChair extends Node {
     supportRight.scale([0.04, 0.3, 0.04]);
     this.parts.push(supportRight);
 
+    // Apply wood material properties to all rocking chair parts
+    this.parts.forEach(part => {
+      part.shininess = 20.0;
+      part.specularStrength = 0.3;
+    });
+
     this.scale([1.8, 1.8, 1.8]);
   }
 
@@ -192,6 +198,8 @@ class RedCouch extends Node {
       const leg = new Cylinder(gl, solidRes.program, solidRes.locs, 0.04, 0.04, 0.2, 8, woodColor);
       leg.setParent(this);
       leg.translate(coord);
+      leg.shininess = 20.0;
+      leg.specularStrength = 0.3;
       this.parts.push(leg);
     });
 

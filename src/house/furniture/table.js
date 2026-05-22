@@ -53,6 +53,12 @@ class SmallTable extends Node {
     top.translate([0, 0.465, 0]);
     this.parts.push(top);
 
+    // Apply wood material properties to all parts
+    this.parts.forEach(part => {
+      part.shininess = 20.0;
+      part.specularStrength = 0.3;
+    });
+
     this.scale([1.8, 1.8, 1.8]);
   }
 

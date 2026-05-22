@@ -3,6 +3,8 @@ class Column extends MeshNode {
     super({ program, locs });
     this.program = program;
     this.locs = locs;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
 
     // We swap/rotate the UV coordinates on the vertical faces (Front, Back, Right, Left)
     // to rotate the wood siding texture by exactly 90 degrees on all column sides!
@@ -82,6 +84,22 @@ class Column extends MeshNode {
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
     gl.uniformMatrix4fv(this.locs.matrix, false, mvp);
 
+    if (this.locs.worldMatrix) {
+      gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (this.locs.shininess) {
+      gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+    }
+    if (this.locs.specularStrength) {
+      gl.uniform1f(this.locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+    }
+    if (this.locs.emissive) {
+      gl.uniform1f(this.locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+    }
+    if (this.locs.twoSided) {
+      gl.uniform1f(this.locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+    }
+
     if (this.locs.tex && texture) {
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -117,6 +135,8 @@ class Porch extends Node {
 
     this.deck = new Wall(gl, texRes.program, texRes.locs);
     this.deck.setParent(this);
+    this.deck.shininess = 20.0;
+    this.deck.specularStrength = 0.3;
 
     // We rotate the deck 90 degrees around the Y-axis to spin the wood texture,
     // and swap the X and Z scales so it retains its correct global 26x4 shape!
@@ -132,6 +152,8 @@ class Porch extends Node {
     const baseHeight = 1.3;
     this.foundation = new Wall(gl, texRes.program, texRes.locs);
     this.foundation.setParent(this);
+    this.foundation.shininess = 20.0;
+    this.foundation.specularStrength = 0.3;
     // Flush with house wall at Z = 13.0, extending 3.6 units out to Z = 16.6 (leaves 0.4 front overhang)
     this.foundation.translate([0, -2.0 - this.deckThickness - baseHeight / 2, 13.0 + 3.6 / 2]);
     this.foundation.scale([this.deckWidth - 0.8, baseHeight, this.deckDepth - 0.4]);
@@ -153,6 +175,8 @@ class Porch extends Node {
 
     this.roof = new Wall(gl, texRes.program, texRes.locs);
     this.roof.setParent(this);
+    this.roof.shininess = 20.0;
+    this.roof.specularStrength = 0.3;
 
     // Position it centered along the diagonal slope, sliding 0.25 units into the wall to close the gap completely.
     // We rotate it 90 degrees around Y to spin the texture 90 degrees, and swap X and Z scales!
@@ -178,6 +202,8 @@ class Porch extends Node {
     pillarPositions.forEach(pos => {
       const col = new Column(gl, texRes.program, texRes.locs);
       col.setParent(this);
+      col.shininess = 20.0;
+      col.specularStrength = 0.3;
       col.translate([pos[0], -2.0 + pillarHeight / 2, pos[1]]);
       col.scale([pillarThickness, pillarHeight, pillarThickness]);
       col.uvScale = [pillarHeight / 4.0, pillarThickness / 2.0];

@@ -4,6 +4,8 @@ class Wall extends MeshNode {
     this.program = program;
     this.locs = locs;
     this.color = color;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
     
     // Position (4) + UV (2) = 6 floats per vertex
     const vertices = new Float32Array([
@@ -77,6 +79,22 @@ class Wall extends MeshNode {
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
     gl.uniformMatrix4fv(this.locs.matrix, false, mvp);
+
+    if (this.locs.worldMatrix) {
+      gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (this.locs.shininess) {
+      gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+    }
+    if (this.locs.specularStrength) {
+      gl.uniform1f(this.locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+    }
+    if (this.locs.emissive) {
+      gl.uniform1f(this.locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+    }
+    if (this.locs.twoSided) {
+      gl.uniform1f(this.locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+    }
 
     if (this.locs.tex && texture) {
       gl.activeTexture(gl.TEXTURE0);

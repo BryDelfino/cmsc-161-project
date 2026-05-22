@@ -98,6 +98,10 @@ class Cylinder extends Node {
     this.locs = locs;
     this.color = color;
     this.mesh = createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments);
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
   }
 
   draw(gl, viewProjection, texture) {
@@ -115,6 +119,22 @@ class Cylinder extends Node {
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
     gl.uniformMatrix4fv(this.locs.matrix, false, mvp);
+
+    if (this.locs.worldMatrix) {
+      gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (this.locs.shininess) {
+      gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+    }
+    if (this.locs.specularStrength) {
+      gl.uniform1f(this.locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+    }
+    if (this.locs.emissive) {
+      gl.uniform1f(this.locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+    }
+    if (this.locs.twoSided) {
+      gl.uniform1f(this.locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+    }
 
     if (this.locs.tex && texture) {
       gl.activeTexture(gl.TEXTURE0);
@@ -151,14 +171,19 @@ class Television extends Node {
     // Cabinet is centered at Y = 0.4 + 0.65 = 1.05.
     this.cabinet = new Wall(gl, solidRes.program, solidRes.locs, [0.65, 0.45, 0.28, 1.0]);
     this.cabinet.setParent(this);
+    this.cabinet.shininess = 20.0;
+    this.cabinet.specularStrength = 0.3;
     this.cabinet.translate([0, 1.05, 0]);
     this.cabinet.scale([1.6, 1.3, 1.0]);
 
     // Screen: uses textured shader so we can display video frames
     this.screen = new Wall(gl, texRes.program, texRes.locs, [0.15, 0.15, 0.15, 1.0]);
     this.screen.setParent(this);
+    this.screen.shininess = 30.0;
+    this.screen.specularStrength = 0.5;
     this.screen.translate([-0.15, 1.1, 0.51]); // Shifted left to make room for knob/controls
     this.screen.scale([1.0, 0.9, 0.02]);
+    this.screen.emissive = 0.0;
     // Create hidden video element for playback
     this.video = document.createElement('video');
     this.video.src = '../assets/textures/courage.mp4';
@@ -201,34 +226,46 @@ class Television extends Node {
     // Main Knob: bigger knob with a handle
     this.mainKnob = new Cylinder(gl, solidRes.program, solidRes.locs, 0.06, 0.06, 0.04, 16, [0.4, 0.4, 0.4, 1.0]);
     this.mainKnob.setParent(this);
+    this.mainKnob.shininess = 80.0;
+    this.mainKnob.specularStrength = 1.0;
     this.mainKnob.translate([0.5, 1.4, 0.53]);
     this.mainKnob.rotate(Math.PI / 2, [1, 0, 0]); // rotate to face forward
 
     this.mainKnobHandle = new Wall(gl, solidRes.program, solidRes.locs, [0.75, 0.75, 0.75, 1.0]);
     this.mainKnobHandle.setParent(this.mainKnob);
+    this.mainKnobHandle.shininess = 80.0;
+    this.mainKnobHandle.specularStrength = 1.0;
     this.mainKnobHandle.translate([0, 0.03, 0]); // bottom of handle is on top cap
     this.mainKnobHandle.scale([0.02, 0.02, 0.10]); // rectangular bar across face
 
     // Buttons (formerly knobs): Two smaller round buttons
     this.knob1 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.035, 0.035, 0.03, 12, [0.6, 0.6, 0.6, 1.0]);
     this.knob1.setParent(this);
+    this.knob1.shininess = 80.0;
+    this.knob1.specularStrength = 1.0;
     this.knob1.translate([0.5, 1.22, 0.53]);
     this.knob1.rotate(Math.PI / 2, [1, 0, 0]);
 
     this.knob2 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.035, 0.035, 0.03, 12, [0.6, 0.6, 0.6, 1.0]);
     this.knob2.setParent(this);
+    this.knob2.shininess = 80.0;
+    this.knob2.specularStrength = 1.0;
     this.knob2.translate([0.5, 1.05, 0.53]);
     this.knob2.rotate(Math.PI / 2, [1, 0, 0]);
 
     // CRT Back Cone & Neck
     this.crtCone = new Cylinder(gl, solidRes.program, solidRes.locs, 0.35, 0.15, 0.4, 16, [0.35, 0.35, 0.35, 1.0]);
     this.crtCone.setParent(this);
+    this.crtCone.shininess = 80.0;
+    this.crtCone.specularStrength = 1.0;
     this.crtCone.translate([0, 1.0, -0.7]);
     this.crtCone.scale([1.5, 1.5, 1.5]);
     this.crtCone.rotate(Math.PI / 2, [1, 0, 0]);
 
     this.crtNeck = new Cylinder(gl, solidRes.program, solidRes.locs, 0.08, 0.08, 0.15, 12, [0.35, 0.35, 0.35, 1.0]);
     this.crtNeck.setParent(this.crtCone);
+    this.crtNeck.shininess = 80.0;
+    this.crtNeck.specularStrength = 1.0;
     this.crtNeck.translate([0, -0.275, 0]);
     this.crtNeck.scale([1.0, 1.0, 1.0]);
     this.crtNeck.rotate(0, [1, 0, 0]);
@@ -236,22 +273,30 @@ class Television extends Node {
     // Speaker grille: horizontal bars
     this.grille = new Wall(gl, solidRes.program, solidRes.locs, [0.1, 0.1, 0.1, 1.0]);
     this.grille.setParent(this);
+    this.grille.shininess = 80.0;
+    this.grille.specularStrength = 1.0;
     this.grille.translate([0.5, 0.8, 0.53]);
     this.grille.scale([0.2, 0.2, 0.01]);
 
     // Antenna base
     this.antennaBase = new Sphere(gl, solidRes.program, solidRes.locs, 0.08, 12, 12, [0.3, 0.3, 0.3, 1.0]);
     this.antennaBase.setParent(this);
+    this.antennaBase.shininess = 80.0;
+    this.antennaBase.specularStrength = 1.0;
     this.antennaBase.translate([0.0, 1.74, 0.0]);
 
     // Antenna rods (V-shape)
     this.rodLeft = new Cylinder(gl, solidRes.program, solidRes.locs, 0.012, 0.012, 0.8, 8, [0.7, 0.7, 0.7, 1.0]);
     this.rodLeft.setParent(this);
+    this.rodLeft.shininess = 80.0;
+    this.rodLeft.specularStrength = 1.0;
     this.rodLeft.translate([-0.25, 2.05, 0.0]);
     this.rodLeft.rotate(Math.PI / 6, [0, 0, 1]); // Tilt left
 
     this.rodRight = new Cylinder(gl, solidRes.program, solidRes.locs, 0.012, 0.012, 0.8, 8, [0.7, 0.7, 0.7, 1.0]);
     this.rodRight.setParent(this);
+    this.rodRight.shininess = 80.0;
+    this.rodRight.specularStrength = 1.0;
     this.rodRight.translate([0.25, 2.05, 0.0]);
     this.rodRight.rotate(-Math.PI / 6, [0, 0, 1]); // Tilt right
 
@@ -266,6 +311,8 @@ class Television extends Node {
     legCoords.forEach((coord) => {
       const leg = new Cylinder(gl, solidRes.program, solidRes.locs, 0.04, 0.02, 0.4, 8, [0.55, 0.38, 0.23, 1.0]);
       leg.setParent(this);
+      leg.shininess = 20.0;
+      leg.specularStrength = 0.3;
       leg.translate(coord);
       // Angle them outward slightly
       const rotZ = coord[0] < 0 ? -0.15 : 0.15;
@@ -289,6 +336,9 @@ class Television extends Node {
   }
 
   updateVisuals() {
+    if (this.screen) {
+      this.screen.emissive = this.isOn ? 1.0 : 0.0;
+    }
     if (this.isOn) {
       // Start video playback when TV turns on
       if (this.video && this.video.paused) {

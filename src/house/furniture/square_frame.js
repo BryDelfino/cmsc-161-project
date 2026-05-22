@@ -53,6 +53,12 @@ class SquarePictureFrame extends Node {
     picture.translate([0, 0, frameDepth / 2 + 0.01]); // Slightly in front of frame
     picture.scale([pictureWidth, pictureHeight, 0.02]);
     this.meshes.push(picture);
+
+    // Apply wood shininess to the borders (first 4 meshes)
+    for (let i = 0; i < 4; i++) {
+      this.meshes[i].shininess = 20.0;
+      this.meshes[i].specularStrength = 0.3;
+    }
   }
 
   setTransform(pos, rotY = 0) {

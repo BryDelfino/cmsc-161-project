@@ -63,6 +63,10 @@ class HollowCylinder extends Node {
     this.locs = locs;
     this.color = color;
     this.mesh = createHollowCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments);
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
   }
 
   draw(gl, viewProjection, texture) {
@@ -80,6 +84,22 @@ class HollowCylinder extends Node {
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
     gl.uniformMatrix4fv(this.locs.matrix, false, mvp);
+
+    if (this.locs.worldMatrix) {
+      gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (this.locs.shininess) {
+      gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+    }
+    if (this.locs.specularStrength) {
+      gl.uniform1f(this.locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+    }
+    if (this.locs.emissive) {
+      gl.uniform1f(this.locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+    }
+    if (this.locs.twoSided) {
+      gl.uniform1f(this.locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+    }
 
     if (this.locs.tex && texture) {
       gl.activeTexture(gl.TEXTURE0);
@@ -118,18 +138,24 @@ class Lamp extends Node {
     // Base: flat cylinder, Y = 0 to 0.04, center at 0.02
     const base = new Cylinder(gl, solidRes.program, solidRes.locs, 0.2, 0.2, 0.04, 16, brassColor);
     base.setParent(this);
+    base.shininess = 80.0;
+    base.specularStrength = 1.0;
     base.translate([0, 0.02, 0]);
     this.parts.push(base);
 
     // Lower half of the stand: straight brass rod, Y = 0.04 to 0.84, height = 0.8, center at 0.44
     const lowerPole = new Cylinder(gl, solidRes.program, solidRes.locs, 0.02, 0.02, 0.8, 12, brassColor);
     lowerPole.setParent(this);
+    lowerPole.shininess = 80.0;
+    lowerPole.specularStrength = 1.0;
     lowerPole.translate([0, 0.44, 0]);
     this.parts.push(lowerPole);
 
     // Joint: brass sphere connecting the two halves of the stand
     const joint = new Sphere(gl, solidRes.program, solidRes.locs, 0.035, 12, 12, brassColor);
     joint.setParent(this);
+    joint.shininess = 80.0;
+    joint.specularStrength = 1.0;
     joint.translate([0, 0.84, 0]);
     this.parts.push(joint);
 
@@ -142,6 +168,8 @@ class Lamp extends Node {
     // Upper pole cylinder, local height = 0.8, center Y = 0.4
     const upperPole = new Cylinder(gl, solidRes.program, solidRes.locs, 0.018, 0.018, 0.8, 12, brassColor);
     upperPole.setParent(upperArm);
+    upperPole.shininess = 80.0;
+    upperPole.specularStrength = 1.0;
     upperPole.translate([0, 0.4, 0]);
     this.parts.push(upperPole);
 
@@ -150,6 +178,8 @@ class Lamp extends Node {
     // Bottom of the shade (wide, radius = 0.28) is the opening.
     const shade = new HollowCylinder(gl, solidRes.program, solidRes.locs, 0.18, 0.28, 0.4, 16, shadeColor);
     shade.setParent(upperArm);
+    shade.shininess = 1.0;
+    shade.specularStrength = 0.0;
     shade.translate([0, 1.0, 0]);
     shade.rotate(-0.4, [1, 0, 0]); // Counter-rotated to hang more naturally pointing down
     this.parts.push(shade);
@@ -158,18 +188,23 @@ class Lamp extends Node {
     // Dual light bulbs: side-by-side inside the hollow shade
     const bulb1 = new Sphere(gl, solidRes.program, solidRes.locs, 0.045, 12, 12, bulbColor);
     bulb1.setParent(shade);
+    bulb1.shininess = 1.0;
+    bulb1.specularStrength = 0.0;
     bulb1.translate([-0.07, -0.1, 0]);
     this.parts.push(bulb1);
     this.bulb1 = bulb1;
 
     const bulb2 = new Sphere(gl, solidRes.program, solidRes.locs, 0.045, 12, 12, bulbColor);
     bulb2.setParent(shade);
+    bulb2.shininess = 1.0;
+    bulb2.specularStrength = 0.0;
     bulb2.translate([0.07, -0.1, 0]);
     this.parts.push(bulb2);
     this.bulb2 = bulb2;
 
     this.isOn = true;
     this.scale([1.8, 1.8, 1.8]);
+    this.updateVisuals();
   }
 
   toggle() {
@@ -180,18 +215,21 @@ class Lamp extends Node {
 
   updateVisuals() {
     const activeBulbColor = [1.0, 0.95, 0.6, 1.0];
-    const inactiveBulbColor = [0.3, 0.3, 0.25, 1.0];
+    const inactiveBulbColor = [0.9, 0.9, 0.85, 1.0];
     const activeShadeColor = [0.96, 0.95, 0.88, 1.0];
     const inactiveShadeColor = [0.5, 0.5, 0.45, 1.0];
 
     if (this.bulb1) {
       this.bulb1.color = this.isOn ? activeBulbColor : inactiveBulbColor;
+      this.bulb1.emissive = this.isOn ? 1.0 : 0.0;
     }
     if (this.bulb2) {
       this.bulb2.color = this.isOn ? activeBulbColor : inactiveBulbColor;
+      this.bulb2.emissive = this.isOn ? 1.0 : 0.0;
     }
     if (this.shade) {
       this.shade.color = this.isOn ? activeShadeColor : inactiveShadeColor;
+      this.shade.emissive = this.isOn ? 0.85 : 0.0;
     }
   }
 

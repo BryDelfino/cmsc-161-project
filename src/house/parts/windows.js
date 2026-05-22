@@ -111,6 +111,17 @@ class Window extends Node {
     // Sized to fit exactly inside the frame
     glass.scale([w - 2 * border, h - 2 * border, 0.02]);
     this.transparentMeshes.push(glass);
+
+    // Apply materials
+    this.solidMeshes.forEach(mesh => {
+      mesh.shininess = 20.0;
+      mesh.specularStrength = 0.3;
+    });
+    this.transparentMeshes.forEach(mesh => {
+      mesh.shininess = 50.0;
+      mesh.specularStrength = 0.8;
+      mesh.twoSided = 1.0;
+    });
   }
 
   draw(gl, viewProjection, pass = 'all') {

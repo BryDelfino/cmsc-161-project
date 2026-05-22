@@ -9,6 +9,8 @@ class Stairs extends Node {
     for (let i = 0; i < stepCount; i++) {
       const step = new Wall(gl, texRes.program, texRes.locs);
       step.setParent(this);
+      step.shininess = 20.0;
+      step.specularStrength = 0.3;
 
       // To fill the gaps on the side, we extend each step's height all the way down to bottomY
       // We offset the highest step (i === 0) by a tiny fraction (-0.01) to prevent Z-fighting with the deck/floor
@@ -109,6 +111,10 @@ class Sphere extends Node {
     this.locs = locs;
     this.color = color;
     this.mesh = createSphereGeometry(gl, radius, latBands, longBands);
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
   }
 
   draw(gl, viewProjection, texture) {
@@ -126,6 +132,22 @@ class Sphere extends Node {
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
     gl.uniformMatrix4fv(this.locs.matrix, false, mvp);
+
+    if (this.locs.worldMatrix) {
+      gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
+    }
+    if (this.locs.shininess) {
+      gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+    }
+    if (this.locs.specularStrength) {
+      gl.uniform1f(this.locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+    }
+    if (this.locs.emissive) {
+      gl.uniform1f(this.locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+    }
+    if (this.locs.twoSided) {
+      gl.uniform1f(this.locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+    }
 
     if (this.locs.tex && texture) {
       gl.activeTexture(gl.TEXTURE0);
@@ -190,6 +212,8 @@ class InteriorStairs extends Node {
       // Riser Solid Block (Fully visual & walkable, solid green color, recessed inward)
       const riser = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
       riser.setParent(this);
+      riser.shininess = 20.0;
+      riser.specularStrength = 0.3;
       riser.translate([0, sY, sZ - 0.03]); // Shifted slightly back for front nose overhang
       riser.scale([riserWidth, h, riserDepth]);
       this.steps.push(riser);
@@ -207,6 +231,8 @@ class InteriorStairs extends Node {
       // Tread (Visual only, sits on top, solid green color)
       const tread = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
       tread.setParent(this);
+      tread.shininess = 20.0;
+      tread.specularStrength = 0.3;
       tread.translate([0, topY + treadThickness / 2, sZ]);
       tread.scale([stepWidth + 0.02, treadThickness, stepDepth + 0.02]); // slightly overhangs for realism!
       this.treads.push(tread);
@@ -219,12 +245,16 @@ class InteriorStairs extends Node {
 
     this.newelPost = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
     this.newelPost.setParent(this);
+    this.newelPost.shininess = 20.0;
+    this.newelPost.specularStrength = 0.3;
     this.newelPost.translate([newelX, bottomY + newelHeight / 2, newelZ]);
     this.newelPost.scale([0.22, newelHeight, 0.22]);
 
     // Sphere on top of Newel Post
     this.newelSphere = new Sphere(gl, solidRes.program, solidRes.locs, 0.18, 16, 16, greenColor);
     this.newelSphere.setParent(this);
+    this.newelSphere.shininess = 20.0;
+    this.newelSphere.specularStrength = 0.3;
     this.newelSphere.translate([newelX, bottomY + newelHeight + 0.12, newelZ]);
 
     // --- 4. HANDRAIL CALCULATIONS ---
@@ -244,6 +274,8 @@ class InteriorStairs extends Node {
       if (balusterHeight > 0.05) {
         const post = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
         post.setParent(this);
+        post.shininess = 20.0;
+        post.specularStrength = 0.3;
         post.translate([newelX, stepTopY + balusterHeight / 2, stepZ]);
         post.scale([0.08, balusterHeight, 0.08]);
         this.posts.push(post);
@@ -253,6 +285,8 @@ class InteriorStairs extends Node {
     // --- 4. BUILD THE HANDRAIL ---
     this.rail = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
     this.rail.setParent(this);
+    this.rail.shininess = 20.0;
+    this.rail.specularStrength = 0.3;
 
     const midY = (bottomY + newelHeight + bottomY + totalHeight + 2.0) / 2;
     const midZ = (newelZ + length) / 2;
@@ -268,6 +302,8 @@ class InteriorStairs extends Node {
     // First step lining: Shorter height (0.35) so it stays below the first step tread
     const baseboard1 = new Wall(gl, solidRes.program, solidRes.locs, baseboardColor);
     baseboard1.setParent(this);
+    baseboard1.shininess = 20.0;
+    baseboard1.specularStrength = 0.3;
     baseboard1.translate([stepWidth / 2 - 0.05, bottomY + 0.175, stepDepth / 2]);
     baseboard1.scale([0.12, 0.72, stepDepth]);
     this.baseboards.push(baseboard1);
@@ -275,6 +311,8 @@ class InteriorStairs extends Node {
     // Remaining steps lining: Standard height (0.7)
     const baseboard2 = new Wall(gl, solidRes.program, solidRes.locs, baseboardColor);
     baseboard2.setParent(this);
+    baseboard2.shininess = 20.0;
+    baseboard2.specularStrength = 0.3;
     const mainLength = length - stepDepth;
     baseboard2.translate([stepWidth / 2 + 0.01, bottomY + 0.35, stepDepth + mainLength / 2]);
     baseboard2.scale([0.05, 0.7, mainLength]);

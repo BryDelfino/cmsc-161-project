@@ -394,6 +394,8 @@ class House extends Node {
     this.ceilingLight.setParent(this);
     this.ceilingLight.setTransform([-2.0, 5.0, 8.0]);
 
+
+
     // --- Outside Boundaries to prevent seeing the sides of the house ---
     // West Boundary: blocks X < -10.1 for Z from 15.0 to 26.0
     this.walls.push({
@@ -439,6 +441,8 @@ class House extends Node {
     upstairsFloor.rotate(Math.PI / 2, [0, 1, 0]);
     upstairsFloor.scale([3.0, 0.2, 4.5]);
     upstairsFloor.uvScale = [3.0 / 2.0, 4.5 / 2.0];
+    upstairsFloor.shininess = 20.0;
+    upstairsFloor.specularStrength = 0.3;
     this.visualTexturedWalls.push({ wall: upstairsFloor, texture: this.floorTexture });
 
     // 2. Upstairs West Wall: spans X at 5.5, Y from 5.0 to 12.0, Z from -2.0 to 9.0
@@ -491,6 +495,16 @@ class House extends Node {
     upstairsCeiling.translate([7.75, 12.0, 3.5]);
     upstairsCeiling.scale([4.5, 0.2, 11.0]);
     this.visualSolidWalls.push(upstairsCeiling);
+
+    // Set wood material properties for floor and baseboards
+    this.livingRoomFloor.shininess = 20.0;
+    this.livingRoomFloor.specularStrength = 0.3;
+    this.visualSolidWalls.forEach(w => {
+      if (w !== upstairsCeiling) {
+        w.shininess = 20.0;
+        w.specularStrength = 0.3;
+      }
+    });
   }
 
   update(deltaTime) {
@@ -600,6 +614,8 @@ class House extends Node {
 
     // Render Ceiling Light
     if (this.ceilingLight) this.ceilingLight.draw(gl, viewProjection);
+
+
 
     // Render all opaque parts of interactable doors first
     if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque'));
