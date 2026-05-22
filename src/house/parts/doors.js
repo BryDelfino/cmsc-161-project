@@ -115,7 +115,7 @@ class Door extends Node {
 
     // --- STATIC OUTER DOOR FRAME (Anchored to Wall) ---
     // Frame color always matches the elegant wainscoting brown
-    const frameColor = [139 / 255, 90 / 255, 43 / 255, 1.0]; // Rich wainscoting wood brown
+    const frameColor = [0.65, 0.45, 0.28, 1.0]; // Rich wainscoting wood brown
 
     const wallT = 0.20;  // Matches wall thickness
     const jambW = 0.075; // Left/Right gap covers
@@ -146,7 +146,7 @@ class Door extends Node {
     if (this.type === 'solid') {
       // 1. SOLID OAK WOOD DOOR
       // A single unit cube scaled to cover the leaf, rendered with a solid wood color
-      const doorLeaf = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.38, 0.24, 0.13, 1.0]);
+      const doorLeaf = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.65, 0.45, 0.28, 1.0]);
       doorLeaf.setParent(this.leaf);
       doorLeaf.scale([w, h, t]);
       this.solidMeshes.push(doorLeaf);
@@ -195,7 +195,7 @@ class Door extends Node {
 
     } else {
       // 2. STYLIZED CARTOON OAK BROWN SCREEN DOOR (Matching Reference Image in Brown)
-      const brownColor = [139 / 255, 90 / 255, 43 / 255, 1.0]; // Beautiful Oak Wood Brown
+      const brownColor = [0.65, 0.45, 0.28, 1.0]; // Beautiful Oak Wood Brown
       const doorT = 0.10;
 
       // --- 2a. Bottom Solid Panel (approx. 42% of total height) ---
