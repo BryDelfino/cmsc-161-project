@@ -34,6 +34,7 @@ function main() {
   const skyboxProgram = createProgram(gl, vertexShaderSource, fragmentShaderSource);
   const solidProgram = createProgram(gl, solidVertexShaderSource, solidFragmentShaderSource);
   const texProgram = createProgram(gl, texVertexShaderSource, texFragmentShaderSource);
+  const shadowProgram = createProgram(gl, shadowVertexShaderSource, shadowFragmentShaderSource);
 
   // 2. LOOKUP LOCATIONS
   const skyboxLocs = {
@@ -66,6 +67,8 @@ function main() {
     tvLightPos: gl.getUniformLocation(solidProgram, "u_tvLightPos"),
     tvLightColor: gl.getUniformLocation(solidProgram, "u_tvLightColor"),
     tvLightOn: gl.getUniformLocation(solidProgram, "u_tvLightOn"),
+    lightMatrix: gl.getUniformLocation(solidProgram, "u_lightMatrix"),
+    shadowMap: gl.getUniformLocation(solidProgram, "u_shadowMap"),
   };
 
   const texLocs = {
@@ -95,6 +98,13 @@ function main() {
     tvLightPos: gl.getUniformLocation(texProgram, "u_tvLightPos"),
     tvLightColor: gl.getUniformLocation(texProgram, "u_tvLightColor"),
     tvLightOn: gl.getUniformLocation(texProgram, "u_tvLightOn"),
+    lightMatrix: gl.getUniformLocation(texProgram, "u_lightMatrix"),
+    shadowMap: gl.getUniformLocation(texProgram, "u_shadowMap"),
+  };
+
+  const shadowLocs = {
+    pos: gl.getAttribLocation(shadowProgram, "a_position"),
+    matrix: gl.getUniformLocation(shadowProgram, "u_matrix"),
   };
 
   // 3. INITIALIZE COMPONENTS
@@ -187,6 +197,39 @@ function main() {
 
   // Compute initial world matrices immediately
   house.update(0);
+
+  // Helper to create a shadow framebuffer
+  function createShadowFBO(gl, size) {
+    const depthTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, depthTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    const renderbuffer = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, size, size);
+
+    const framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, depthTexture, 0);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer);
+
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+      console.error("Shadow FBO not complete: " + status);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { framebuffer, texture: depthTexture };
+  }
+
+  // --- SHADOW FBO SETUP ---
+  const SHADOW_MAP_SIZE = 4096;
+  const sunShadowFBO = createShadowFBO(gl, SHADOW_MAP_SIZE);
+  const shadowDepthTexture = sunShadowFBO.texture;
+  const shadowFramebuffer = sunShadowFBO.framebuffer;
 
   // Helper to find the closest interactable object that the camera is facing
   function getClosestInteractable(maxDist = 5.0) {
@@ -330,7 +373,7 @@ function main() {
     }
   });
 
-  function setupLightingUniforms() {
+  function setupLightingUniforms(lightMatrix) {
     const ceilingLightPos = vec3.create();
     if (house.ceilingLight && house.ceilingLight.bulb) {
       vec3.set(ceilingLightPos,
@@ -362,13 +405,17 @@ function main() {
 
     const ceilingOn = house.ceilingLight && house.ceilingLight.isOn;
     const lampOn = house.livingRoomLamp && house.livingRoomLamp.isOn;
-    let tvIntensity = 0.5; // default for both OFF
+    let tvIntensity = 0.20; // default for both OFF
     if (ceilingOn && lampOn) {
-      tvIntensity = 0.08;
+      tvIntensity = 0.03;
     } else if (ceilingOn || lampOn) {
-      tvIntensity = 0.2;
+      tvIntensity = 0.08;
     }
     const tvColor = [0.5 * tvIntensity, 0.7 * tvIntensity, 1.0 * tvIntensity];
+
+    // Bind shadow map texture to texture unit 1
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, shadowDepthTexture);
 
     gl.useProgram(solidProgram);
     gl.uniform3fv(solidLocs.viewPosition, camera.position);
@@ -384,6 +431,12 @@ function main() {
     gl.uniform3fv(solidLocs.tvLightPos, tvLightPos);
     gl.uniform3fv(solidLocs.tvLightColor, tvColor);
     gl.uniform1f(solidLocs.tvLightOn, house.livingRoomTV.isOn ? 1.0 : 0.0);
+    if (solidLocs.lightMatrix) {
+      gl.uniformMatrix4fv(solidLocs.lightMatrix, false, lightMatrix);
+    }
+    if (solidLocs.shadowMap) {
+      gl.uniform1i(solidLocs.shadowMap, 1);
+    }
 
     gl.useProgram(texProgram);
     gl.uniform3fv(texLocs.viewPosition, camera.position);
@@ -399,6 +452,12 @@ function main() {
     gl.uniform3fv(texLocs.tvLightPos, tvLightPos);
     gl.uniform3fv(texLocs.tvLightColor, tvColor);
     gl.uniform1f(texLocs.tvLightOn, house.livingRoomTV.isOn ? 1.0 : 0.0);
+    if (texLocs.lightMatrix) {
+      gl.uniformMatrix4fv(texLocs.lightMatrix, false, lightMatrix);
+    }
+    if (texLocs.shadowMap) {
+      gl.uniform1i(texLocs.shadowMap, 1);
+    }
   }
 
   let then = 0;
@@ -412,21 +471,6 @@ function main() {
 
     // Update Camera (with dynamic door and static wall collisions, and walkable platforms)
     camera.update(deltaTime, house.getCollisionWalls(), house.getWalkableNodes());
-
-    // Viewport Setup
-    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
-      canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
-    }
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    // Enable Depth testing and standard alpha blending for semi-transparent objects (screen doors, windows, etc...)
-    gl.enable(gl.DEPTH_TEST);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-    // Setup lighting uniforms dynamically per frame
-    setupLightingUniforms();
 
     // Update HUD overlay interaction prompt based on door/lightswitch/lamp/TV proximity
     const promptDiv = document.querySelector("#interaction-prompt");
@@ -454,17 +498,71 @@ function main() {
       }
     }
 
+    // Calculate lightMatrix (Directional Shadow Map Camera)
+    const lightDirNorm = vec3.create();
+    vec3.normalize(lightDirNorm, [0.385, -0.206, -0.900]);
+
+    const lightTarget = vec3.fromValues(0, 1.5, 0);
+    const lightPos = vec3.create();
+    // Offset light position back along the light direction
+    vec3.scaleAndAdd(lightPos, lightTarget, lightDirNorm, -40.0);
+
+    const lightView = mat4.create();
+    mat4.lookAt(lightView, lightPos, lightTarget, [0, 1, 0]);
+
+    const lightProj = mat4.create();
+    mat4.ortho(lightProj, -25, 25, -25, 25, 0.1, 80);
+
+    const lightMatrix = mat4.create();
+    mat4.multiply(lightMatrix, lightProj, lightView);
+
+    // Common shadow resources
+    const shadowInfo = {
+      program: shadowProgram,
+      locs: shadowLocs
+    };
+
+    gl.enable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND); // No blending needed for depth writing
+
+    // --- PASS 1A: SUN SHADOW PASS (Render to FBO) ---
+    gl.bindFramebuffer(gl.FRAMEBUFFER, shadowFramebuffer);
+    gl.viewport(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0); // Depth is packed; 1.0 means clear/empty depth
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    house.draw(gl, lightMatrix, shadowInfo);
+
+    // --- PASS 2: COLOR PASS (Render to Screen) ---
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    // Viewport Setup
+    if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+      canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
+    }
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // Setup lighting uniforms dynamically per frame, including lightMatrix and binding the shadow textures
+    setupLightingUniforms(lightMatrix);
+
     const projectionMatrix = camera.getProjectionMatrix(gl);
     const viewMatrix = camera.getViewMatrix();
 
-    // --- DRAW COMPONENTS ---
+    // Draw skybox
     skybox.draw(projectionMatrix, viewMatrix);
 
     gl.depthFunc(gl.LESS);
     const viewProjection = mat4.multiply(mat4.create(), projectionMatrix, viewMatrix);
+
+    // Draw floor
     floor.draw(gl, viewProjection);
 
-    // Draw House 
+    // Draw House
     house.draw(gl, viewProjection);
 
     requestAnimationFrame(render);
