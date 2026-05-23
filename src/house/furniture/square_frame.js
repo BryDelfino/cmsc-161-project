@@ -1,9 +1,12 @@
 class SquarePictureFrame extends Node {
-  constructor(gl, solidRes) {
+  constructor(gl, solidRes, texRes, texture) {
     super();
     this.gl = gl;
     this.solidRes = solidRes;
+    this.texRes = texRes;
+    this.texture = texture;
     this.meshes = [];
+    this.pictureMesh = null;
 
     // Frame dimensions
     const frameWidth = 1.5;   // Total outer width
@@ -13,8 +16,6 @@ class SquarePictureFrame extends Node {
 
     // Wooden frame color: yellow
     const frameColor = [240 / 255, 205 / 255, 60 / 255, 1.0];
-    // Picture placeholder color: warm tan/beige
-    const pictureColor = [210 / 255, 180 / 255, 140 / 255, 1.0];
 
     // Build frame border (wooden outer frame)
     // Left border
@@ -45,14 +46,15 @@ class SquarePictureFrame extends Node {
     bottomBorder.scale([frameWidth, borderWidth, frameDepth]);
     this.meshes.push(bottomBorder);
 
-    // Picture placeholder (inside the frame)
+    // Picture (inside the frame) - uses textured shader
     const pictureWidth = frameWidth - 2 * borderWidth;
     const pictureHeight = frameHeight - 2 * borderWidth;
-    const picture = new Wall(gl, solidRes.program, solidRes.locs, pictureColor);
-    picture.setParent(this);
-    picture.translate([0, 0, frameDepth / 2 + 0.01]); // Slightly in front of frame
-    picture.scale([pictureWidth, pictureHeight, 0.02]);
-    this.meshes.push(picture);
+    this.pictureMesh = new Wall(gl, texRes.program, texRes.locs);
+    this.pictureMesh.setParent(this);
+    this.pictureMesh.translate([0, 0, frameDepth / 2 + 0.01]); // Slightly in front of frame
+    this.pictureMesh.scale([pictureWidth, pictureHeight, 0.02]);
+    this.pictureMesh.uvScale = [1.0, -1.0];
+    this.pictureMesh.uvOffset = [0.0, 1.0];
 
     // Apply wood shininess to the borders (first 4 meshes)
     for (let i = 0; i < 4; i++) {
@@ -72,5 +74,8 @@ class SquarePictureFrame extends Node {
     this.meshes.forEach(mesh => {
       mesh.draw(gl, viewProjection, shadowProgramInfo);
     });
+    if (this.pictureMesh) {
+      this.pictureMesh.draw(gl, viewProjection, this.texture, shadowProgramInfo);
+    }
   }
 }
