@@ -1,3 +1,28 @@
+// 0. SHADOW SHADERS
+const shadowVertexShaderSource = `
+  attribute vec4 a_position;
+  uniform mat4 u_matrix;
+  void main() {
+    gl_Position = u_matrix * a_position;
+  }
+`;
+
+const shadowFragmentShaderSource = `
+  precision mediump float;
+  
+  vec4 packDepth(const in float depth) {
+    const vec4 bitShift = vec4(16777216.0, 65536.0, 256.0, 1.0);
+    const vec4 bitMask = vec4(0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0);
+    vec4 res = fract(depth * bitShift);
+    res -= res.xxyz * bitMask;
+    return res;
+  }
+
+  void main() {
+    gl_FragColor = packDepth(gl_FragCoord.z);
+  }
+`;
+
 // 1. SKYBOX SHADERS
 const vertexShaderSource = `
   attribute vec4 a_position;
@@ -27,12 +52,15 @@ const solidVertexShaderSource = `
   uniform mat4 u_matrix;
   uniform mat4 u_worldMatrix;
   uniform mat4 u_worldInverseTranspose;
+  uniform mat4 u_lightMatrix;
   varying vec3 v_worldPos;
   varying vec3 v_normal;
+  varying vec4 v_lightSpacePos;
   void main() {
     gl_Position = u_matrix * a_position;
     v_worldPos = (u_worldMatrix * a_position).xyz;
     v_normal = (u_worldInverseTranspose * vec4(a_normal, 0.0)).xyz;
+    v_lightSpacePos = u_lightMatrix * u_worldMatrix * a_position;
   }
 `;
 
@@ -41,7 +69,9 @@ const solidFragmentShaderSource = `
   
   varying vec3 v_worldPos;
   varying vec3 v_normal;
+  varying vec4 v_lightSpacePos;
   uniform vec4 u_color;
+  uniform sampler2D u_shadowMap;
   
   // Lighting uniforms
   uniform vec3 u_viewPosition;
@@ -72,6 +102,11 @@ const solidFragmentShaderSource = `
   uniform float u_emissive;
   uniform float u_twoSided;
   
+  float unpackDepth(const in vec4 rgbaDepth) {
+    const vec4 bitShift = vec4(1.0 / 16777216.0, 1.0 / 65536.0, 1.0 / 256.0, 1.0);
+    return dot(rgbaDepth, bitShift);
+  }
+  
   void main() {
     vec3 normal = normalize(v_normal);
     vec3 viewDir = normalize(u_viewPosition - v_worldPos);
@@ -79,18 +114,36 @@ const solidFragmentShaderSource = `
       normal = -normal;
     }
     
+    // Shadow map calculation
+    vec3 projCoords = v_lightSpacePos.xyz / v_lightSpacePos.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float shadow = 0.0;
+    if (projCoords.z <= 1.0 && projCoords.x >= 0.0 && projCoords.x <= 1.0 && projCoords.y >= 0.0 && projCoords.y <= 1.0) {
+      float closestDepth = unpackDepth(texture2D(u_shadowMap, projCoords.xy));
+      float bias = max(0.003 * (1.0 - dot(normal, normalize(-u_ambientLightDir))), 0.0005);
+      if (projCoords.z - bias > closestDepth) {
+        shadow = 1.0;
+      }
+    }
+    
     vec3 diffuseLight = vec3(0.0);
     vec3 specularLight = vec3(0.0);
     
+    float shadowStrength = 1.0;
+    if (u_ceilingLightOn > 0.5) shadowStrength -= 0.35;
+    if (u_lampLightOn > 0.5) shadowStrength -= 0.35;
+    if (u_tvLightOn > 0.5) shadowStrength -= 0.2;
+    shadowStrength = max(shadowStrength, 0.3);
+
     // 1. Ambient Directional Light
     {
       vec3 lightDir = normalize(-u_ambientLightDir);
       float diff = (u_twoSided > 0.5) ? abs(dot(normal, lightDir)) : max(dot(normal, lightDir), 0.0);
-      diffuseLight += u_ambientLightColor * diff;
+      diffuseLight += u_ambientLightColor * diff * (1.0 - shadow * shadowStrength);
       
       vec3 reflectDir = reflect(-lightDir, normal);
       float spec = pow(max(dot(viewDir, reflectDir), 0.0), max(u_shininess, 1.0));
-      specularLight += u_ambientLightColor * u_specularStrength * spec;
+      specularLight += u_ambientLightColor * u_specularStrength * spec * (1.0 - shadow * shadowStrength);
     }
     
     // 2. Ceiling Light (Point Light)
@@ -123,16 +176,19 @@ const solidFragmentShaderSource = `
       specularLight += u_lampLightColor * u_specularStrength * spec * attenuation;
     }
     
-    // 4. TV Light (Directional Light)
+    // 4. TV Light (Directional Light with range attenuation)
     if (u_tvLightOn > 0.5) {
-      if (dot(v_worldPos - u_tvLightPos, u_tvLightDir) > 0.0) {
+      vec3 toLight = v_worldPos - u_tvLightPos;
+      if (dot(toLight, u_tvLightDir) > 0.0) {
+        float dist = length(toLight);
         vec3 lightDir = normalize(-u_tvLightDir);
+        float attenuation = 1.0 / (1.0 + 0.3 * dist + 0.15 * dist * dist);
         float diff = (u_twoSided > 0.5) ? abs(dot(normal, lightDir)) : max(dot(normal, lightDir), 0.0);
-        diffuseLight += u_tvLightColor * diff;
+        diffuseLight += u_tvLightColor * diff * attenuation;
         
         vec3 reflectDir = reflect(-lightDir, normal);
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), max(u_shininess, 1.0));
-        specularLight += u_tvLightColor * u_specularStrength * spec;
+        specularLight += u_tvLightColor * u_specularStrength * spec * attenuation;
       }
     }
     
@@ -152,14 +208,17 @@ const texVertexShaderSource = `
   uniform mat4 u_matrix;
   uniform mat4 u_worldMatrix;
   uniform mat4 u_worldInverseTranspose;
+  uniform mat4 u_lightMatrix;
   varying vec3 v_worldPos;
   varying vec2 v_texcoord;
   varying vec3 v_normal;
+  varying vec4 v_lightSpacePos;
   void main() {
     gl_Position = u_matrix * a_position;
     v_worldPos = (u_worldMatrix * a_position).xyz;
     v_texcoord = a_texcoord;
     v_normal = (u_worldInverseTranspose * vec4(a_normal, 0.0)).xyz;
+    v_lightSpacePos = u_lightMatrix * u_worldMatrix * a_position;
   }
 `;
 
@@ -169,8 +228,10 @@ const texFragmentShaderSource = `
   varying vec3 v_worldPos;
   varying vec2 v_texcoord;
   varying vec3 v_normal;
+  varying vec4 v_lightSpacePos;
   
   uniform sampler2D u_texture;
+  uniform sampler2D u_shadowMap;
   uniform vec2 u_uvScale;
   uniform vec2 u_uvOffset;
   
@@ -203,6 +264,11 @@ const texFragmentShaderSource = `
   uniform float u_emissive;
   uniform float u_twoSided;
   
+  float unpackDepth(const in vec4 rgbaDepth) {
+    const vec4 bitShift = vec4(1.0 / 16777216.0, 1.0 / 65536.0, 1.0 / 256.0, 1.0);
+    return dot(rgbaDepth, bitShift);
+  }
+  
   void main() {
     vec3 normal = normalize(v_normal);
     vec3 viewDir = normalize(u_viewPosition - v_worldPos);
@@ -213,18 +279,36 @@ const texFragmentShaderSource = `
     vec4 baseColor = texture2D(u_texture, fract((v_texcoord * u_uvScale) + u_uvOffset));
     if (baseColor.a < 0.1) discard;
     
+    // Shadow map calculation
+    vec3 projCoords = v_lightSpacePos.xyz / v_lightSpacePos.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float shadow = 0.0;
+    if (projCoords.z <= 1.0 && projCoords.x >= 0.0 && projCoords.x <= 1.0 && projCoords.y >= 0.0 && projCoords.y <= 1.0) {
+      float closestDepth = unpackDepth(texture2D(u_shadowMap, projCoords.xy));
+      float bias = max(0.003 * (1.0 - dot(normal, normalize(-u_ambientLightDir))), 0.0005);
+      if (projCoords.z - bias > closestDepth) {
+        shadow = 1.0;
+      }
+    }
+    
     vec3 diffuseLight = vec3(0.0);
     vec3 specularLight = vec3(0.0);
     
+    float shadowStrength = 1.0;
+    if (u_ceilingLightOn > 0.5) shadowStrength -= 0.35;
+    if (u_lampLightOn > 0.5) shadowStrength -= 0.35;
+    if (u_tvLightOn > 0.5) shadowStrength -= 0.2;
+    shadowStrength = max(shadowStrength, 0.3);
+
     // 1. Ambient Directional Light
     {
       vec3 lightDir = normalize(-u_ambientLightDir);
       float diff = (u_twoSided > 0.5) ? abs(dot(normal, lightDir)) : max(dot(normal, lightDir), 0.0);
-      diffuseLight += u_ambientLightColor * diff;
+      diffuseLight += u_ambientLightColor * diff * (1.0 - shadow * shadowStrength);
       
       vec3 reflectDir = reflect(-lightDir, normal);
       float spec = pow(max(dot(viewDir, reflectDir), 0.0), max(u_shininess, 1.0));
-      specularLight += u_ambientLightColor * u_specularStrength * spec;
+      specularLight += u_ambientLightColor * u_specularStrength * spec * (1.0 - shadow * shadowStrength);
     }
     
     // 2. Ceiling Light (Point Light)
@@ -257,16 +341,19 @@ const texFragmentShaderSource = `
       specularLight += u_lampLightColor * u_specularStrength * spec * attenuation;
     }
     
-    // 4. TV Light (Directional Light)
+    // 4. TV Light (Directional Light with range attenuation)
     if (u_tvLightOn > 0.5) {
-      if (dot(v_worldPos - u_tvLightPos, u_tvLightDir) > 0.0) {
+      vec3 toLight = v_worldPos - u_tvLightPos;
+      if (dot(toLight, u_tvLightDir) > 0.0) {
+        float dist = length(toLight);
         vec3 lightDir = normalize(-u_tvLightDir);
+        float attenuation = 1.0 / (1.0 + 0.3 * dist + 0.15 * dist * dist);
         float diff = (u_twoSided > 0.5) ? abs(dot(normal, lightDir)) : max(dot(normal, lightDir), 0.0);
-        diffuseLight += u_tvLightColor * diff;
+        diffuseLight += u_tvLightColor * diff * attenuation;
         
         vec3 reflectDir = reflect(-lightDir, normal);
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), max(u_shininess, 1.0));
-        specularLight += u_tvLightColor * u_specularStrength * spec;
+        specularLight += u_tvLightColor * u_specularStrength * spec * attenuation;
       }
     }
     
