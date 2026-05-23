@@ -171,9 +171,9 @@ class RockingChair extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.parts.forEach(part => part.draw(gl, viewProjection));
+    this.parts.forEach(part => part.draw(gl, viewProjection, shadowProgramInfo));
   }
 }
 
@@ -300,8 +300,8 @@ class RedCouch extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.parts.forEach(part => part.draw(gl, viewProjection));
+    this.parts.forEach(part => part.draw(gl, viewProjection, shadowProgramInfo));
   }
 }
