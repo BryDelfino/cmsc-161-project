@@ -77,66 +77,76 @@ class HollowCylinder extends Node {
     this.twoSided = 0.0;
   }
 
-  draw(gl, viewProjection, texture) {
-    if (!this.program) return;
-    gl.useProgram(this.program);
+  draw(gl, viewProjection, texture, shadowProgramInfo) {
+    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
+      shadowProgramInfo = texture;
+      texture = null;
+    }
+    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
+    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
+    if (!program) return;
+    gl.useProgram(program);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
-    gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 36, 0);
-    gl.enableVertexAttribArray(this.locs.pos);
+    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(locs.pos);
 
-    if (this.locs.uv !== undefined && this.locs.uv !== -1) {
-      gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 36, 16);
-      gl.enableVertexAttribArray(this.locs.uv);
-    }
+    if (!shadowProgramInfo) {
+      if (locs.uv !== undefined && locs.uv !== -1) {
+        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
+        gl.enableVertexAttribArray(locs.uv);
+      }
 
-    if (this.locs.normal !== undefined && this.locs.normal !== -1) {
-      gl.vertexAttribPointer(this.locs.normal, 3, gl.FLOAT, false, 36, 24);
-      gl.enableVertexAttribArray(this.locs.normal);
+      if (locs.normal !== undefined && locs.normal !== -1) {
+        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
+        gl.enableVertexAttribArray(locs.normal);
+      }
     }
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
-    gl.uniformMatrix4fv(this.locs.matrix, false, mvp);
+    gl.uniformMatrix4fv(locs.matrix, false, mvp);
 
-    if (this.locs.worldMatrix) {
-      gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
-    }
-    if (this.locs.worldInverseTranspose) {
-      const normalMatrix = mat4.create();
-      mat4.invert(normalMatrix, this.worldMatrix);
-      mat4.transpose(normalMatrix, normalMatrix);
-      gl.uniformMatrix4fv(this.locs.worldInverseTranspose, false, normalMatrix);
-    }
-    if (this.locs.shininess) {
-      gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
-    }
-    if (this.locs.specularStrength) {
-      gl.uniform1f(this.locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
-    }
-    if (this.locs.emissive) {
-      gl.uniform1f(this.locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
-    }
-    if (this.locs.twoSided) {
-      gl.uniform1f(this.locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
-    }
-
-    if (this.locs.tex && texture) {
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.uniform1i(this.locs.tex, 0);
-
-      if (this.locs.uvScale) {
-        const uvs = this.uvScale || [1.0, 1.0];
-        gl.uniform2fv(this.locs.uvScale, uvs);
+    if (!shadowProgramInfo) {
+      if (locs.worldMatrix) {
+        gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
       }
-      if (this.locs.uvOffset) {
-        const uvo = this.uvOffset || [0.0, 0.0];
-        gl.uniform2fv(this.locs.uvOffset, uvo);
+      if (locs.worldInverseTranspose) {
+        const normalMatrix = mat4.create();
+        mat4.invert(normalMatrix, this.worldMatrix);
+        mat4.transpose(normalMatrix, normalMatrix);
+        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
       }
-    }
+      if (locs.shininess) {
+        gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+      }
+      if (locs.specularStrength) {
+        gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+      }
+      if (locs.emissive) {
+        gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+      }
+      if (locs.twoSided) {
+        gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+      }
 
-    if (this.locs.color) {
-      gl.uniform4fv(this.locs.color, this.color);
+      if (locs.tex && texture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(locs.tex, 0);
+
+        if (locs.uvScale) {
+          const uvs = this.uvScale || [1.0, 1.0];
+          gl.uniform2fv(locs.uvScale, uvs);
+        }
+        if (locs.uvOffset) {
+          const uvo = this.uvOffset || [0.0, 0.0];
+          gl.uniform2fv(locs.uvOffset, uvo);
+        }
+      }
+
+      if (locs.color) {
+        gl.uniform4fv(locs.color, this.color);
+      }
     }
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
@@ -303,8 +313,8 @@ class Lamp extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.parts.forEach(part => part.draw(gl, viewProjection));
+    this.parts.forEach(part => part.draw(gl, viewProjection, null, shadowProgramInfo));
   }
 }
