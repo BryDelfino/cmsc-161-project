@@ -67,10 +67,10 @@ class RectangularPictureFrame extends Node {
     mat4.rotate(this.localMatrix, this.localMatrix, rotY, [0, 1, 0]);
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
     this.meshes.forEach(mesh => {
-      mesh.draw(gl, viewProjection);
+      mesh.draw(gl, viewProjection, shadowProgramInfo);
     });
   }
 }
