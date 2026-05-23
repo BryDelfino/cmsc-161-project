@@ -570,64 +570,67 @@ class House extends Node {
     return walls;
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix();
 
     // Render visual textured walls with their designated JPEG textures
     this.visualTexturedWalls.forEach(item => {
-      item.wall.draw(gl, viewProjection, item.texture);
+      item.wall.draw(gl, viewProjection, item.texture, shadowProgramInfo);
     });
 
     // Render solid wainscoting brown baseboard strips
     this.visualSolidWalls.forEach(w => {
-      w.draw(gl, viewProjection);
+      w.draw(gl, viewProjection, shadowProgramInfo);
     });
 
     // Render ceiling slabs with stair opening
-    this.livingRoomCeilingLeft.draw(gl, viewProjection);
-    this.livingRoomCeilingRight.draw(gl, viewProjection);
+    this.livingRoomCeilingLeft.draw(gl, viewProjection, shadowProgramInfo);
+    this.livingRoomCeilingRight.draw(gl, viewProjection, shadowProgramInfo);
 
     // Render floor slab
-    this.livingRoomFloor.draw(gl, viewProjection, this.floorTexture);
+    this.livingRoomFloor.draw(gl, viewProjection, this.floorTexture, shadowProgramInfo);
 
     // Render Front Porch (Deck platform, railings, and steps leading to ground)
-    if (this.porch) this.porch.draw(gl, viewProjection);
+    if (this.porch) this.porch.draw(gl, viewProjection, shadowProgramInfo);
 
     // Render Interior Stairs
-    if (this.interiorStairs) this.interiorStairs.draw(gl, viewProjection, this.wallTextures.livingRoom);
+    if (this.interiorStairs) this.interiorStairs.draw(gl, viewProjection, this.wallTextures.livingRoom, shadowProgramInfo);
 
     // Render Living Room Furniture
-    if (this.livingRoomCarpet) this.livingRoomCarpet.draw(gl, viewProjection, this.wallTextures.rug);
-    if (this.livingRoomTV) this.livingRoomTV.draw(gl, viewProjection);
-    if (this.livingRoomRockingChair) this.livingRoomRockingChair.draw(gl, viewProjection);
-    if (this.livingRoomRedCouch) this.livingRoomRedCouch.draw(gl, viewProjection);
-    if (this.livingRoomTable) this.livingRoomTable.draw(gl, viewProjection);
-    if (this.livingRoomLamp) this.livingRoomLamp.draw(gl, viewProjection);
-    if (this.livingRoomClock) this.livingRoomClock.draw(gl, viewProjection);
+    if (this.livingRoomCarpet) this.livingRoomCarpet.draw(gl, viewProjection, this.wallTextures.rug, shadowProgramInfo);
+    if (this.livingRoomTV) this.livingRoomTV.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomRockingChair) this.livingRoomRockingChair.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomRedCouch) this.livingRoomRedCouch.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomTable) this.livingRoomTable.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomLamp) this.livingRoomLamp.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomClock) this.livingRoomClock.draw(gl, viewProjection, shadowProgramInfo);
 
     // Render Picture Frames
-    if (this.squareFrame) this.squareFrame.draw(gl, viewProjection);
-    if (this.rectangularFrame) this.rectangularFrame.draw(gl, viewProjection);
+    if (this.squareFrame) this.squareFrame.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.rectangularFrame) this.rectangularFrame.draw(gl, viewProjection, shadowProgramInfo);
 
     // Render Lightswitches
-    if (this.lightswitches) this.lightswitches.forEach(sw => sw.draw(gl, viewProjection));
+    if (this.lightswitches) this.lightswitches.forEach(sw => sw.draw(gl, viewProjection, shadowProgramInfo));
 
     // Render Ceiling Light
-    if (this.ceilingLight) this.ceilingLight.draw(gl, viewProjection);
+    if (this.ceilingLight) this.ceilingLight.draw(gl, viewProjection, shadowProgramInfo);
 
+    if (shadowProgramInfo) {
+      if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque', shadowProgramInfo));
+      if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'opaque', shadowProgramInfo));
+    } else {
+      // Render all opaque parts of interactable doors first
+      if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque'));
 
+      // Render all opaque parts of windows
+      if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'opaque'));
 
-    // Render all opaque parts of interactable doors first
-    if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque'));
-
-    // Render all opaque parts of windows
-    if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'opaque'));
-
-    // Then render all transparent screen meshes.
-    gl.depthMask(false);
-    if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'transparent'));
-    // Render all transparent window glass panes
-    if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'transparent'));
-    gl.depthMask(true); // Re-enable depth buffer writes
+      // Then render all transparent screen meshes.
+      gl.depthMask(false);
+      if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'transparent'));
+      // Render all transparent window glass panes
+      if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'transparent'));
+      gl.depthMask(true); // Re-enable depth buffer writes
+    }
   }
 }
