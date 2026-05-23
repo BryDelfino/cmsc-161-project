@@ -104,17 +104,17 @@ class Lightswitch extends Node {
     this.ledMesh.emissive = 1.0;
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
 
     // Draw plate, border, rocker, etc.
     this.solidMeshes.forEach(mesh => {
-      mesh.draw(gl, viewProjection);
+      mesh.draw(gl, viewProjection, shadowProgramInfo);
     });
 
     // Draw status LED
     if (this.ledMesh) {
-      this.ledMesh.draw(gl, viewProjection);
+      this.ledMesh.draw(gl, viewProjection, shadowProgramInfo);
     }
   }
 }

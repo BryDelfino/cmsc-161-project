@@ -381,25 +381,29 @@ class Door extends Node {
     };
   }
 
-  draw(gl, viewProjection, pass = 'all') {
+  draw(gl, viewProjection, pass = 'all', shadowProgramInfo) {
+    if (pass && typeof pass === 'object') {
+      shadowProgramInfo = pass;
+      pass = 'all';
+    }
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
 
     if (pass === 'all' || pass === 'opaque') {
       // Render Textured parts (Solid Oak Door leaf)
       this.texturedMeshes.forEach(mesh => {
-        mesh.draw(gl, viewProjection, this.woodTexture);
+        mesh.draw(gl, viewProjection, this.woodTexture, shadowProgramInfo);
       });
 
       // Render Solid parts (Borders, Plate, Knobs)
       this.solidMeshes.forEach(mesh => {
-        mesh.draw(gl, viewProjection);
+        mesh.draw(gl, viewProjection, null, shadowProgramInfo);
       });
     }
 
     if (pass === 'all' || pass === 'transparent') {
       // Render Custom Screen Mesh (if present) using its transparent PNG texture
       if (this.screenMesh && this.screenMeshTexture) {
-        this.screenMesh.draw(gl, viewProjection, this.screenMeshTexture);
+        this.screenMesh.draw(gl, viewProjection, this.screenMeshTexture, shadowProgramInfo);
       }
     }
   }

@@ -46,10 +46,14 @@ class Stairs extends Node {
     mat4.rotate(this.localMatrix, this.localMatrix, rotY, [0, 1, 0]);
   }
 
-  draw(gl, viewProjection, texture) {
+  draw(gl, viewProjection, texture, shadowProgramInfo) {
+    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
+      shadowProgramInfo = texture;
+      texture = null;
+    }
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
     this.steps.forEach(step => {
-      step.draw(gl, viewProjection, texture);
+      step.draw(gl, viewProjection, texture, shadowProgramInfo);
     });
   }
 }
@@ -117,64 +121,74 @@ class Sphere extends Node {
     this.twoSided = 0.0;
   }
 
-  draw(gl, viewProjection, texture) {
-    if (!this.program) return;
-    gl.useProgram(this.program);
+  draw(gl, viewProjection, texture, shadowProgramInfo) {
+    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
+      shadowProgramInfo = texture;
+      texture = null;
+    }
+    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
+    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
+    if (!program) return;
+    gl.useProgram(program);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
-    gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 36, 0);
-    gl.enableVertexAttribArray(this.locs.pos);
+    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(locs.pos);
 
-    if (this.locs.uv !== undefined && this.locs.uv !== -1) {
-      gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 36, 16);
-      gl.enableVertexAttribArray(this.locs.uv);
-    }
+    if (!shadowProgramInfo) {
+      if (locs.uv !== undefined && locs.uv !== -1) {
+        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
+        gl.enableVertexAttribArray(locs.uv);
+      }
 
-    if (this.locs.normal !== undefined && this.locs.normal !== -1) {
-      gl.vertexAttribPointer(this.locs.normal, 3, gl.FLOAT, false, 36, 24);
-      gl.enableVertexAttribArray(this.locs.normal);
+      if (locs.normal !== undefined && locs.normal !== -1) {
+        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
+        gl.enableVertexAttribArray(locs.normal);
+      }
     }
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
-    gl.uniformMatrix4fv(this.locs.matrix, false, mvp);
+    gl.uniformMatrix4fv(locs.matrix, false, mvp);
 
-    if (this.locs.worldMatrix) {
-      gl.uniformMatrix4fv(this.locs.worldMatrix, false, this.worldMatrix);
-    }
-    if (this.locs.worldInverseTranspose) {
-      const normalMatrix = mat4.create();
-      mat4.invert(normalMatrix, this.worldMatrix);
-      mat4.transpose(normalMatrix, normalMatrix);
-      gl.uniformMatrix4fv(this.locs.worldInverseTranspose, false, normalMatrix);
-    }
-    if (this.locs.shininess) {
-      gl.uniform1f(this.locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
-    }
-    if (this.locs.specularStrength) {
-      gl.uniform1f(this.locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
-    }
-    if (this.locs.emissive) {
-      gl.uniform1f(this.locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
-    }
-    if (this.locs.twoSided) {
-      gl.uniform1f(this.locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
-    }
-
-    if (this.locs.tex && texture) {
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.uniform1i(this.locs.tex, 0);
-
-      if (this.locs.uvScale) {
-        gl.uniform2fv(this.locs.uvScale, [1.0, 1.0]);
+    if (!shadowProgramInfo) {
+      if (locs.worldMatrix) {
+        gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
       }
-      if (this.locs.uvOffset) {
-        gl.uniform2fv(this.locs.uvOffset, [0.0, 0.0]);
+      if (locs.worldInverseTranspose) {
+        const normalMatrix = mat4.create();
+        mat4.invert(normalMatrix, this.worldMatrix);
+        mat4.transpose(normalMatrix, normalMatrix);
+        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
       }
-    }
+      if (locs.shininess) {
+        gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+      }
+      if (locs.specularStrength) {
+        gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+      }
+      if (locs.emissive) {
+        gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+      }
+      if (locs.twoSided) {
+        gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+      }
 
-    if (this.locs.color) {
-      gl.uniform4fv(this.locs.color, this.color);
+      if (locs.tex && texture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(locs.tex, 0);
+
+        if (locs.uvScale) {
+          gl.uniform2fv(locs.uvScale, [1.0, 1.0]);
+        }
+        if (locs.uvOffset) {
+          gl.uniform2fv(locs.uvOffset, [0.0, 0.0]);
+        }
+      }
+
+      if (locs.color) {
+        gl.uniform4fv(locs.color, this.color);
+      }
     }
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
@@ -383,31 +397,35 @@ class InteriorStairs extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection, riserTexture) {
+  draw(gl, viewProjection, riserTexture, shadowProgramInfo) {
+    if (riserTexture && typeof riserTexture === 'object' && riserTexture.program && riserTexture.locs) {
+      shadowProgramInfo = riserTexture;
+      riserTexture = null;
+    }
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
 
     // Draw solid green riser blocks
     this.steps.forEach(riser => {
-      riser.draw(gl, viewProjection);
+      riser.draw(gl, viewProjection, null, shadowProgramInfo);
     });
 
     // Draw textured wallpaper side plates on the open side of the stairs
     this.sidePlates.forEach(plate => {
-      plate.draw(gl, viewProjection, riserTexture);
+      plate.draw(gl, viewProjection, riserTexture, shadowProgramInfo);
     });
 
     // Draw treads using green color
     this.treads.forEach(tread => {
-      tread.draw(gl, viewProjection);
+      tread.draw(gl, viewProjection, null, shadowProgramInfo);
     });
 
     // Draw solid green wooden structures
-    this.newelPost.draw(gl, viewProjection);
-    this.newelSphere.draw(gl, viewProjection);
-    this.posts.forEach(p => p.draw(gl, viewProjection));
-    this.rail.draw(gl, viewProjection);
+    this.newelPost.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.newelSphere.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.posts.forEach(p => p.draw(gl, viewProjection, null, shadowProgramInfo));
+    this.rail.draw(gl, viewProjection, null, shadowProgramInfo);
 
     // Draw wainscoting brown baseboard lining along stairs base
-    this.baseboards.forEach(b => b.draw(gl, viewProjection));
+    this.baseboards.forEach(b => b.draw(gl, viewProjection, null, shadowProgramInfo));
   }
 }

@@ -124,18 +124,22 @@ class Window extends Node {
     });
   }
 
-  draw(gl, viewProjection, pass = 'all') {
+  draw(gl, viewProjection, pass = 'all', shadowProgramInfo) {
+    if (pass && typeof pass === 'object') {
+      shadowProgramInfo = pass;
+      pass = 'all';
+    }
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
 
     if (pass === 'all' || pass === 'opaque') {
       this.solidMeshes.forEach(mesh => {
-        mesh.draw(gl, viewProjection);
+        mesh.draw(gl, viewProjection, null, shadowProgramInfo);
       });
     }
 
     if (pass === 'all' || pass === 'transparent') {
       this.transparentMeshes.forEach(mesh => {
-        mesh.draw(gl, viewProjection);
+        mesh.draw(gl, viewProjection, null, shadowProgramInfo);
       });
     }
   }

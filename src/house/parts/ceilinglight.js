@@ -48,8 +48,8 @@ class CeilingLight extends Node {
     mat4.scale(this.localMatrix, this.localMatrix, [1.8, 1.8, 1.8]);
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.parts.forEach(part => part.draw(gl, viewProjection));
+    this.parts.forEach(part => part.draw(gl, viewProjection, shadowProgramInfo));
   }
 }
