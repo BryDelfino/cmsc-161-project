@@ -186,6 +186,7 @@ function main() {
     livingRoom: loadTexture(gl, "../assets/textures/living_room.jpg", [240, 230, 210, 255]),
     screenmesh: loadTexture(gl, "../assets/textures/screenmesh.png", [128, 128, 128, 100]),
     rug: loadTexture(gl, "../assets/textures/rug.png", [133, 110, 95, 255]),
+    noodles: loadTexture(gl, "../assets/textures/noodles.jpg", [210, 180, 140, 255]),
   };
 
   // --- HOUSE ---
