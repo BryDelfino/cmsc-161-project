@@ -115,7 +115,7 @@ class Door extends Node {
 
     // --- STATIC OUTER DOOR FRAME (Anchored to Wall) ---
     // Frame color always matches the elegant wainscoting brown
-    const frameColor = [139 / 255, 90 / 255, 43 / 255, 1.0]; // Rich wainscoting wood brown
+    const frameColor = [0.65, 0.45, 0.28, 1.0]; // Rich wainscoting wood brown
 
     const wallT = 0.20;  // Matches wall thickness
     const jambW = 0.075; // Left/Right gap covers
@@ -124,6 +124,8 @@ class Door extends Node {
     // Left Jamb casing
     const leftJamb = new Wall(gl, this.solidRes.program, this.solidRes.locs, frameColor);
     leftJamb.setParent(this); // Stays static, parented to the base Door node
+    leftJamb.shininess = 20.0;
+    leftJamb.specularStrength = 0.3;
     leftJamb.translate([-1.5 + jambW / 2, 0, 0]);
     leftJamb.scale([jambW, frameH, wallT]);
     this.solidMeshes.push(leftJamb);
@@ -131,6 +133,8 @@ class Door extends Node {
     // Right Jamb casing
     const rightJamb = new Wall(gl, this.solidRes.program, this.solidRes.locs, frameColor);
     rightJamb.setParent(this); // Stays static, parented to the base Door node
+    rightJamb.shininess = 20.0;
+    rightJamb.specularStrength = 0.3;
     rightJamb.translate([1.5 - jambW / 2, 0, 0]);
     rightJamb.scale([jambW, frameH, wallT]);
     this.solidMeshes.push(rightJamb);
@@ -138,6 +142,8 @@ class Door extends Node {
     // Top Jamb casing (Header)
     const topJamb = new Wall(gl, this.solidRes.program, this.solidRes.locs, frameColor);
     topJamb.setParent(this); // Stays static, parented to the base Door node
+    topJamb.shininess = 20.0;
+    topJamb.specularStrength = 0.3;
     topJamb.translate([0, 2.0 - 0.05, 0]);
     topJamb.scale([3.0, 0.1, wallT]);
     this.solidMeshes.push(topJamb);
@@ -146,8 +152,10 @@ class Door extends Node {
     if (this.type === 'solid') {
       // 1. SOLID OAK WOOD DOOR
       // A single unit cube scaled to cover the leaf, rendered with a solid wood color
-      const doorLeaf = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.38, 0.24, 0.13, 1.0]);
+      const doorLeaf = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.65, 0.45, 0.28, 1.0]);
       doorLeaf.setParent(this.leaf);
+      doorLeaf.shininess = 20.0;
+      doorLeaf.specularStrength = 0.3;
       doorLeaf.scale([w, h, t]);
       this.solidMeshes.push(doorLeaf);
 
@@ -168,6 +176,8 @@ class Door extends Node {
       // Front door knob shank (parented to rotating base)
       const shankF = new Wall(gl, this.solidRes.program, this.solidRes.locs, knobColor);
       shankF.setParent(this.knobBaseF);
+      shankF.shininess = 80.0;
+      shankF.specularStrength = 1.0;
       shankF.translate([0, 0, 0.03]);
       shankF.scale([0.06, 0.06, 0.08]);
       this.solidMeshes.push(shankF);
@@ -175,6 +185,8 @@ class Door extends Node {
       // Front door knob (parented to rotating base)
       const knobF = new Wall(gl, this.solidRes.program, this.solidRes.locs, knobColor);
       knobF.setParent(this.knobBaseF);
+      knobF.shininess = 80.0;
+      knobF.specularStrength = 1.0;
       knobF.translate([0, 0, 0.07]);
       knobF.scale([0.12, 0.12, 0.08]);
       this.solidMeshes.push(knobF);
@@ -182,6 +194,8 @@ class Door extends Node {
       // Back door knob shank (parented to rotating base)
       const shankB = new Wall(gl, this.solidRes.program, this.solidRes.locs, knobColor);
       shankB.setParent(this.knobBaseB);
+      shankB.shininess = 80.0;
+      shankB.specularStrength = 1.0;
       shankB.translate([0, 0, -0.03]);
       shankB.scale([0.06, 0.06, 0.08]);
       this.solidMeshes.push(shankB);
@@ -189,19 +203,23 @@ class Door extends Node {
       // Back door knob (parented to rotating base)
       const knobB = new Wall(gl, this.solidRes.program, this.solidRes.locs, knobColor);
       knobB.setParent(this.knobBaseB);
+      knobB.shininess = 80.0;
+      knobB.specularStrength = 1.0;
       knobB.translate([0, 0, -0.07]);
       knobB.scale([0.12, 0.12, 0.08]);
       this.solidMeshes.push(knobB);
 
     } else {
       // 2. STYLIZED CARTOON OAK BROWN SCREEN DOOR (Matching Reference Image in Brown)
-      const brownColor = [139 / 255, 90 / 255, 43 / 255, 1.0]; // Beautiful Oak Wood Brown
+      const brownColor = [0.65, 0.45, 0.28, 1.0]; // Beautiful Oak Wood Brown
       const doorT = 0.10;
 
       // --- 2a. Bottom Solid Panel (approx. 42% of total height) ---
       const bottomH = 1.65; // Balanced wood panel height
       const bottomPanel = new Wall(gl, this.solidRes.program, this.solidRes.locs, brownColor);
       bottomPanel.setParent(this.leaf);
+      bottomPanel.shininess = 20.0;
+      bottomPanel.specularStrength = 0.3;
       bottomPanel.translate([0, -h / 2 + bottomH / 2, 0]); // Center at Y = -1.125
       bottomPanel.scale([w, bottomH, doorT]);  // Width=2.85, Height=1.65, Depth=0.1
       this.solidMeshes.push(bottomPanel);
@@ -213,6 +231,8 @@ class Door extends Node {
       // Left vertical frame stile
       const stileL = new Wall(gl, this.solidRes.program, this.solidRes.locs, brownColor);
       stileL.setParent(this.leaf);
+      stileL.shininess = 20.0;
+      stileL.specularStrength = 0.3;
       stileL.translate([-w / 2 + 0.15, stileY, 0]); 
       stileL.scale([0.3, stileH, doorT]);
       this.solidMeshes.push(stileL);
@@ -220,6 +240,8 @@ class Door extends Node {
       // Right vertical frame stile
       const stileR = new Wall(gl, this.solidRes.program, this.solidRes.locs, brownColor);
       stileR.setParent(this.leaf);
+      stileR.shininess = 20.0;
+      stileR.specularStrength = 0.3;
       stileR.translate([w / 2 - 0.15, stileY, 0]); 
       stileR.scale([0.3, stileH, doorT]);
       this.solidMeshes.push(stileR);
@@ -227,6 +249,8 @@ class Door extends Node {
       // Top horizontal frame rail
       const railTop = new Wall(gl, this.solidRes.program, this.solidRes.locs, brownColor);
       railTop.setParent(this.leaf);
+      railTop.shininess = 20.0;
+      railTop.specularStrength = 0.3;
       railTop.translate([0, h / 2 - 0.15, 0]); // Center at Y = 1.8
       railTop.scale([w, 0.3, doorT]);
       this.solidMeshes.push(railTop);
@@ -235,6 +259,9 @@ class Door extends Node {
       // A large semi-transparent screen mesh using the PNG texture
       this.screenMesh = new Wall(gl, this.texRes.program, this.texRes.locs);
       this.screenMesh.setParent(this.leaf);
+      this.screenMesh.shininess = 1.0;
+      this.screenMesh.specularStrength = 0.0;
+      this.screenMesh.twoSided = 1.0;
       // Center it in the opening and push it slightly forward/backward to avoid Z-fighting
       const screenH = stileH - 0.15; // 2.10 units
       const screenY = stileY - 0.075; // 0.75 units
@@ -254,6 +281,8 @@ class Door extends Node {
       // Front Backplate
       const plateF = new Wall(gl, this.solidRes.program, this.solidRes.locs, goldColor);
       plateF.setParent(this.leaf);
+      plateF.shininess = 80.0;
+      plateF.specularStrength = 1.0;
       plateF.translate([w / 2 - 0.32, plateY, doorT / 2 + 0.005]);
       plateF.scale([plateW, plateH, 0.01]);
       this.solidMeshes.push(plateF);
@@ -261,6 +290,8 @@ class Door extends Node {
       // Back Backplate
       const plateB = new Wall(gl, this.solidRes.program, this.solidRes.locs, goldColor);
       plateB.setParent(this.leaf);
+      plateB.shininess = 80.0;
+      plateB.specularStrength = 1.0;
       plateB.translate([w / 2 - 0.32, plateY, -(doorT / 2 + 0.005)]);
       plateB.scale([plateW, plateH, 0.01]);
       this.solidMeshes.push(plateB);
@@ -294,6 +325,8 @@ class Door extends Node {
       // Front Golden Knob
       const knobF = new Wall(gl, this.solidRes.program, this.solidRes.locs, goldColor);
       knobF.setParent(this.knobBaseF);
+      knobF.shininess = 80.0;
+      knobF.specularStrength = 1.0;
       knobF.translate([0, 0, 0.07]);
       knobF.scale([0.15, 0.15, 0.15]); // Cute round spherical knob
       this.solidMeshes.push(knobF);
@@ -301,6 +334,8 @@ class Door extends Node {
       // Back Golden Knob
       const knobB = new Wall(gl, this.solidRes.program, this.solidRes.locs, goldColor);
       knobB.setParent(this.knobBaseB);
+      knobB.shininess = 80.0;
+      knobB.specularStrength = 1.0;
       knobB.translate([0, 0, -0.07]);
       knobB.scale([0.15, 0.15, 0.15]);
       this.solidMeshes.push(knobB);
@@ -346,25 +381,29 @@ class Door extends Node {
     };
   }
 
-  draw(gl, viewProjection, pass = 'all') {
+  draw(gl, viewProjection, pass = 'all', shadowProgramInfo) {
+    if (pass && typeof pass === 'object') {
+      shadowProgramInfo = pass;
+      pass = 'all';
+    }
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
 
     if (pass === 'all' || pass === 'opaque') {
       // Render Textured parts (Solid Oak Door leaf)
       this.texturedMeshes.forEach(mesh => {
-        mesh.draw(gl, viewProjection, this.woodTexture);
+        mesh.draw(gl, viewProjection, this.woodTexture, shadowProgramInfo);
       });
 
       // Render Solid parts (Borders, Plate, Knobs)
       this.solidMeshes.forEach(mesh => {
-        mesh.draw(gl, viewProjection);
+        mesh.draw(gl, viewProjection, null, shadowProgramInfo);
       });
     }
 
     if (pass === 'all' || pass === 'transparent') {
       // Render Custom Screen Mesh (if present) using its transparent PNG texture
       if (this.screenMesh && this.screenMeshTexture) {
-        this.screenMesh.draw(gl, viewProjection, this.screenMeshTexture);
+        this.screenMesh.draw(gl, viewProjection, this.screenMeshTexture, shadowProgramInfo);
       }
     }
   }

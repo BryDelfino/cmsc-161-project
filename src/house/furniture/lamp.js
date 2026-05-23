@@ -1,3 +1,159 @@
+function createHollowCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments) {
+  const vertexData = [];
+  const indexData = [];
+
+  const drdy = (radiusTop - radiusBottom) / height;
+
+  // Generate side vertices
+  for (let i = 0; i <= radialSegments; i++) {
+    const angle = (i / radialSegments) * 2 * Math.PI;
+    const sin = Math.sin(angle);
+    const cos = Math.cos(angle);
+    const u = i / radialSegments;
+
+    // Normal calculation: outwards
+    const len = Math.sqrt(cos * cos + drdy * drdy + sin * sin);
+    const nx = cos / len;
+    const ny = -drdy / len;
+    const nz = sin / len;
+
+    // Top vertex
+    const xTop = cos * radiusTop;
+    const zTop = sin * radiusTop;
+    const yTop = height / 2;
+    vertexData.push(xTop, yTop, zTop, 1.0, u, 1.0, nx, ny, nz);
+
+    // Bottom vertex
+    const xBot = cos * radiusBottom;
+    const zBot = sin * radiusBottom;
+    const yBot = -height / 2;
+    vertexData.push(xBot, yBot, zBot, 1.0, u, 0.0, nx, ny, nz);
+  }
+
+  // Generate side indices (both winding directions to be double-sided)
+  for (let i = 0; i < radialSegments; i++) {
+    const next = i + 1;
+    const idxTopCurrent = i * 2;
+    const idxBotCurrent = i * 2 + 1;
+    const idxTopNext = next * 2;
+    const idxBotNext = next * 2 + 1;
+
+    // Triangle 1: TopCurrent -> BotCurrent -> BotNext (outer)
+    indexData.push(idxTopCurrent, idxBotCurrent, idxBotNext);
+    // Triangle 2: TopCurrent -> BotNext -> TopNext (outer)
+    indexData.push(idxTopCurrent, idxBotNext, idxTopNext);
+
+    // Triangle 3: TopCurrent -> BotNext -> BotCurrent (inner)
+    indexData.push(idxTopCurrent, idxBotNext, idxBotCurrent);
+    // Triangle 4: TopCurrent -> TopNext -> BotNext (inner)
+    indexData.push(idxTopCurrent, idxTopNext, idxBotNext);
+  }
+
+  const vbuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
+
+  const ibuf = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibuf);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+
+  return {
+    vbuf: vbuf,
+    ibuf: ibuf,
+    count: indexData.length
+  };
+}
+
+class HollowCylinder extends Node {
+  constructor(gl, program, locs, radiusTop, radiusBottom, height, radialSegments = 16, color = [0.8, 0.7, 0.5, 1.0]) {
+    super();
+    this.program = program;
+    this.locs = locs;
+    this.color = color;
+    this.mesh = createHollowCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments);
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
+  }
+
+  draw(gl, viewProjection, texture, shadowProgramInfo) {
+    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
+      shadowProgramInfo = texture;
+      texture = null;
+    }
+    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
+    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
+    if (!program) return;
+    gl.useProgram(program);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
+    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(locs.pos);
+
+    if (!shadowProgramInfo) {
+      if (locs.uv !== undefined && locs.uv !== -1) {
+        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
+        gl.enableVertexAttribArray(locs.uv);
+      }
+
+      if (locs.normal !== undefined && locs.normal !== -1) {
+        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
+        gl.enableVertexAttribArray(locs.normal);
+      }
+    }
+
+    const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
+    gl.uniformMatrix4fv(locs.matrix, false, mvp);
+
+    if (!shadowProgramInfo) {
+      if (locs.worldMatrix) {
+        gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
+      }
+      if (locs.worldInverseTranspose) {
+        const normalMatrix = mat4.create();
+        mat4.invert(normalMatrix, this.worldMatrix);
+        mat4.transpose(normalMatrix, normalMatrix);
+        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
+      }
+      if (locs.shininess) {
+        gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+      }
+      if (locs.specularStrength) {
+        gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+      }
+      if (locs.emissive) {
+        gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+      }
+      if (locs.twoSided) {
+        gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+      }
+
+      if (locs.tex && texture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(locs.tex, 0);
+
+        if (locs.uvScale) {
+          const uvs = this.uvScale || [1.0, 1.0];
+          gl.uniform2fv(locs.uvScale, uvs);
+        }
+        if (locs.uvOffset) {
+          const uvo = this.uvOffset || [0.0, 0.0];
+          gl.uniform2fv(locs.uvOffset, uvo);
+        }
+      }
+
+      if (locs.color) {
+        gl.uniform4fv(locs.color, this.color);
+      }
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+}
+
 class Lamp extends Node {
   constructor(gl, solidRes) {
     super();
@@ -11,33 +167,73 @@ class Lamp extends Node {
     // Base: flat cylinder, Y = 0 to 0.04, center at 0.02
     const base = new Cylinder(gl, solidRes.program, solidRes.locs, 0.2, 0.2, 0.04, 16, brassColor);
     base.setParent(this);
+    base.shininess = 80.0;
+    base.specularStrength = 1.0;
     base.translate([0, 0.02, 0]);
     this.parts.push(base);
 
-    // Pole: brass rod, Y = 0.04 to 1.64, height = 1.6, center at 0.84
-    const pole = new Cylinder(gl, solidRes.program, solidRes.locs, 0.02, 0.02, 1.6, 12, brassColor);
-    pole.setParent(this);
-    pole.translate([0, 0.84, 0]);
-    this.parts.push(pole);
+    // Lower half of the stand: straight brass rod, Y = 0.04 to 0.84, height = 0.8, center at 0.44
+    const lowerPole = new Cylinder(gl, solidRes.program, solidRes.locs, 0.02, 0.02, 0.8, 12, brassColor);
+    lowerPole.setParent(this);
+    lowerPole.shininess = 80.0;
+    lowerPole.specularStrength = 1.0;
+    lowerPole.translate([0, 0.44, 0]);
+    this.parts.push(lowerPole);
 
-    // Shade: Y = 1.64 to 2.04, height = 0.4, center at 1.84
-    // Top radius = 0.18, Bottom radius = 0.28 (gives it a nice cone slant)
-    const shade = new Cylinder(gl, solidRes.program, solidRes.locs, 0.18, 0.28, 0.4, 16, shadeColor);
-    shade.setParent(this);
-    shade.translate([0, 1.84, 0]);
+    // Joint: brass sphere connecting the two halves of the stand
+    const joint = new Sphere(gl, solidRes.program, solidRes.locs, 0.035, 12, 12, brassColor);
+    joint.setParent(this);
+    joint.shininess = 80.0;
+    joint.specularStrength = 1.0;
+    joint.translate([0, 0.84, 0]);
+    this.parts.push(joint);
+
+    // Upper half of the stand (angled)
+    const upperArm = new Node();
+    upperArm.setParent(this);
+    upperArm.translate([0, 0.84, 0]);
+    upperArm.rotate(0.6, [1, 0, 0]); // Angled forward
+
+    // Upper pole cylinder, local height = 0.8, center Y = 0.4
+    const upperPole = new Cylinder(gl, solidRes.program, solidRes.locs, 0.018, 0.018, 0.8, 12, brassColor);
+    upperPole.setParent(upperArm);
+    upperPole.shininess = 80.0;
+    upperPole.specularStrength = 1.0;
+    upperPole.translate([0, 0.4, 0]);
+    this.parts.push(upperPole);
+
+    // Shade: Hollow cylinder flaring outwards at the bottom opening
+    // Top of the shade (narrow, radius = 0.18) meets the top of the upper pole (Y = 0.8).
+    // Bottom of the shade (wide, radius = 0.28) is the opening.
+    const shade = new HollowCylinder(gl, solidRes.program, solidRes.locs, 0.18, 0.28, 0.4, 16, shadeColor);
+    shade.setParent(upperArm);
+    shade.shininess = 1.0;
+    shade.specularStrength = 0.0;
+    shade.translate([0, 1.0, 0]);
+    shade.rotate(-0.4, [1, 0, 0]); // Counter-rotated to hang more naturally pointing down
     this.parts.push(shade);
     this.shade = shade;
 
-    // Light bulb: inside shade, center at Y = 1.74
-    // Sphere class is loaded globally from stairs.js
-    const bulb = new Sphere(gl, solidRes.program, solidRes.locs, 0.06, 12, 12, bulbColor);
-    bulb.setParent(this);
-    bulb.translate([0, 1.74, 0]);
-    this.parts.push(bulb);
-    this.bulb = bulb;
+    // Dual light bulbs: side-by-side inside the hollow shade
+    const bulb1 = new Sphere(gl, solidRes.program, solidRes.locs, 0.045, 12, 12, bulbColor);
+    bulb1.setParent(shade);
+    bulb1.shininess = 1.0;
+    bulb1.specularStrength = 0.0;
+    bulb1.translate([-0.07, -0.1, 0]);
+    this.parts.push(bulb1);
+    this.bulb1 = bulb1;
+
+    const bulb2 = new Sphere(gl, solidRes.program, solidRes.locs, 0.045, 12, 12, bulbColor);
+    bulb2.setParent(shade);
+    bulb2.shininess = 1.0;
+    bulb2.specularStrength = 0.0;
+    bulb2.translate([0.07, -0.1, 0]);
+    this.parts.push(bulb2);
+    this.bulb2 = bulb2;
 
     this.isOn = true;
     this.scale([1.8, 1.8, 1.8]);
+    this.updateVisuals();
   }
 
   toggle() {
@@ -47,11 +243,22 @@ class Lamp extends Node {
   }
 
   updateVisuals() {
-    if (this.bulb) {
-      this.bulb.color = this.isOn ? [1.0, 0.95, 0.6, 1.0] : [0.3, 0.3, 0.25, 1.0];
+    const activeBulbColor = [1.0, 0.95, 0.6, 1.0];
+    const inactiveBulbColor = [0.9, 0.9, 0.85, 1.0];
+    const activeShadeColor = [0.96, 0.95, 0.88, 1.0];
+    const inactiveShadeColor = [0.5, 0.5, 0.45, 1.0];
+
+    if (this.bulb1) {
+      this.bulb1.color = this.isOn ? activeBulbColor : inactiveBulbColor;
+      this.bulb1.emissive = this.isOn ? 1.0 : 0.0;
+    }
+    if (this.bulb2) {
+      this.bulb2.color = this.isOn ? activeBulbColor : inactiveBulbColor;
+      this.bulb2.emissive = this.isOn ? 1.0 : 0.0;
     }
     if (this.shade) {
-      this.shade.color = this.isOn ? [0.96, 0.95, 0.88, 1.0] : [0.5, 0.5, 0.45, 1.0];
+      this.shade.color = this.isOn ? activeShadeColor : inactiveShadeColor;
+      this.shade.emissive = this.isOn ? 0.85 : 0.0;
     }
   }
 
@@ -65,7 +272,7 @@ class Lamp extends Node {
   }
 
   getCollisionBounds(houseElevation) {
-    // Total bounding box of the Lamp base (scaled by 1.8)
+    // Physics bounds remain centered around the base so the player can walk close to the stand
     const halfWidth = 0.15 * 1.8;
     const halfDepth = 0.15 * 1.8;
     const height = 2.05 * 1.8;
@@ -106,8 +313,8 @@ class Lamp extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.parts.forEach(part => part.draw(gl, viewProjection));
+    this.parts.forEach(part => part.draw(gl, viewProjection, null, shadowProgramInfo));
   }
 }

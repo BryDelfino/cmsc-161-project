@@ -341,7 +341,7 @@ class House extends Node {
     this.interiorStairs.setTransform([7.8, 0, 9.6], Math.PI);
 
     // --- Living Room Furniture ---
-    this.livingRoomTV = new Television(gl, solidRes);
+    this.livingRoomTV = new Television(gl, solidRes, texRes);
     this.livingRoomTV.setParent(this);
     this.livingRoomTV.setTransform([-5.0, -1.9, 8.0], Math.PI / 2);
 
@@ -359,11 +359,11 @@ class House extends Node {
 
     this.livingRoomTable = new SmallTable(gl, solidRes);
     this.livingRoomTable.setParent(this);
-    this.livingRoomTable.setTransform([2.5, -1.9, 8.0], 0);
+    this.livingRoomTable.setTransform([2.5, -1.9, 8.0], Math.PI / 3);
 
     this.livingRoomLamp = new Lamp(gl, solidRes);
     this.livingRoomLamp.setParent(this);
-    this.livingRoomLamp.setTransform([2.7, -1.9, 12.0], 0);
+    this.livingRoomLamp.setTransform([2.7, -1.9, 12.0], -Math.PI / 2);
 
     this.livingRoomClock = new GrandfatherClock(gl, solidRes);
     this.livingRoomClock.setParent(this);
@@ -393,6 +393,8 @@ class House extends Node {
     this.ceilingLight = new CeilingLight(gl, solidRes, true);
     this.ceilingLight.setParent(this);
     this.ceilingLight.setTransform([-2.0, 5.0, 8.0]);
+
+
 
     // --- Outside Boundaries to prevent seeing the sides of the house ---
     // West Boundary: blocks X < -10.1 for Z from 15.0 to 26.0
@@ -439,6 +441,8 @@ class House extends Node {
     upstairsFloor.rotate(Math.PI / 2, [0, 1, 0]);
     upstairsFloor.scale([3.0, 0.2, 4.5]);
     upstairsFloor.uvScale = [3.0 / 2.0, 4.5 / 2.0];
+    upstairsFloor.shininess = 20.0;
+    upstairsFloor.specularStrength = 0.3;
     this.visualTexturedWalls.push({ wall: upstairsFloor, texture: this.floorTexture });
 
     // 2. Upstairs West Wall: spans X at 5.5, Y from 5.0 to 12.0, Z from -2.0 to 9.0
@@ -491,12 +495,23 @@ class House extends Node {
     upstairsCeiling.translate([7.75, 12.0, 3.5]);
     upstairsCeiling.scale([4.5, 0.2, 11.0]);
     this.visualSolidWalls.push(upstairsCeiling);
+
+    // Set wood material properties for floor and baseboards
+    this.livingRoomFloor.shininess = 20.0;
+    this.livingRoomFloor.specularStrength = 0.3;
+    this.visualSolidWalls.forEach(w => {
+      if (w !== upstairsCeiling) {
+        w.shininess = 20.0;
+        w.specularStrength = 0.3;
+      }
+    });
   }
 
   update(deltaTime) {
     if (this.doors) this.doors.forEach(door => door.update(deltaTime));
     if (this.lightswitches) this.lightswitches.forEach(sw => sw.update(deltaTime));
     if (this.livingRoomTV && this.livingRoomTV.update) this.livingRoomTV.update(deltaTime);
+    if (this.livingRoomClock && this.livingRoomClock.update) this.livingRoomClock.update(deltaTime);
     // Propagate all local matrix updates down the scenegraph to compute world matrices
     this.updateWorldMatrix(null);
   }
@@ -555,62 +570,67 @@ class House extends Node {
     return walls;
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix();
 
     // Render visual textured walls with their designated JPEG textures
     this.visualTexturedWalls.forEach(item => {
-      item.wall.draw(gl, viewProjection, item.texture);
+      item.wall.draw(gl, viewProjection, item.texture, shadowProgramInfo);
     });
 
     // Render solid wainscoting brown baseboard strips
     this.visualSolidWalls.forEach(w => {
-      w.draw(gl, viewProjection);
+      w.draw(gl, viewProjection, shadowProgramInfo);
     });
 
     // Render ceiling slabs with stair opening
-    this.livingRoomCeilingLeft.draw(gl, viewProjection);
-    this.livingRoomCeilingRight.draw(gl, viewProjection);
+    this.livingRoomCeilingLeft.draw(gl, viewProjection, shadowProgramInfo);
+    this.livingRoomCeilingRight.draw(gl, viewProjection, shadowProgramInfo);
 
     // Render floor slab
-    this.livingRoomFloor.draw(gl, viewProjection, this.floorTexture);
+    this.livingRoomFloor.draw(gl, viewProjection, this.floorTexture, shadowProgramInfo);
 
     // Render Front Porch (Deck platform, railings, and steps leading to ground)
-    if (this.porch) this.porch.draw(gl, viewProjection);
+    if (this.porch) this.porch.draw(gl, viewProjection, shadowProgramInfo);
 
     // Render Interior Stairs
-    if (this.interiorStairs) this.interiorStairs.draw(gl, viewProjection, this.wallTextures.livingRoom);
+    if (this.interiorStairs) this.interiorStairs.draw(gl, viewProjection, this.wallTextures.livingRoom, shadowProgramInfo);
 
     // Render Living Room Furniture
-    if (this.livingRoomCarpet) this.livingRoomCarpet.draw(gl, viewProjection, this.wallTextures.rug);
-    if (this.livingRoomTV) this.livingRoomTV.draw(gl, viewProjection);
-    if (this.livingRoomRockingChair) this.livingRoomRockingChair.draw(gl, viewProjection);
-    if (this.livingRoomRedCouch) this.livingRoomRedCouch.draw(gl, viewProjection);
-    if (this.livingRoomTable) this.livingRoomTable.draw(gl, viewProjection);
-    if (this.livingRoomLamp) this.livingRoomLamp.draw(gl, viewProjection);
-    if (this.livingRoomClock) this.livingRoomClock.draw(gl, viewProjection);
+    if (this.livingRoomCarpet) this.livingRoomCarpet.draw(gl, viewProjection, this.wallTextures.rug, shadowProgramInfo);
+    if (this.livingRoomTV) this.livingRoomTV.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomRockingChair) this.livingRoomRockingChair.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomRedCouch) this.livingRoomRedCouch.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomTable) this.livingRoomTable.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomLamp) this.livingRoomLamp.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.livingRoomClock) this.livingRoomClock.draw(gl, viewProjection, shadowProgramInfo);
 
     // Render Picture Frames
-    if (this.squareFrame) this.squareFrame.draw(gl, viewProjection);
-    if (this.rectangularFrame) this.rectangularFrame.draw(gl, viewProjection);
+    if (this.squareFrame) this.squareFrame.draw(gl, viewProjection, shadowProgramInfo);
+    if (this.rectangularFrame) this.rectangularFrame.draw(gl, viewProjection, shadowProgramInfo);
 
     // Render Lightswitches
-    if (this.lightswitches) this.lightswitches.forEach(sw => sw.draw(gl, viewProjection));
+    if (this.lightswitches) this.lightswitches.forEach(sw => sw.draw(gl, viewProjection, shadowProgramInfo));
 
     // Render Ceiling Light
-    if (this.ceilingLight) this.ceilingLight.draw(gl, viewProjection);
+    if (this.ceilingLight) this.ceilingLight.draw(gl, viewProjection, shadowProgramInfo);
 
-    // Render all opaque parts of interactable doors first
-    if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque'));
+    if (shadowProgramInfo) {
+      if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque', shadowProgramInfo));
+      if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'opaque', shadowProgramInfo));
+    } else {
+      // Render all opaque parts of interactable doors first
+      if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'opaque'));
 
-    // Render all opaque parts of windows
-    if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'opaque'));
+      // Render all opaque parts of windows
+      if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'opaque'));
 
-    // Then render all transparent screen meshes.
-    gl.depthMask(false);
-    if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'transparent'));
-    // Render all transparent window glass panes
-    if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'transparent'));
-    gl.depthMask(true); // Re-enable depth buffer writes
+      // Then render all transparent screen meshes.
+      gl.depthMask(false);
+      if (this.doors) this.doors.forEach(door => door.draw(gl, viewProjection, 'transparent'));
+      // Render all transparent window glass panes
+      if (this.windows) this.windows.forEach(win => win.draw(gl, viewProjection, 'transparent'));
+      gl.depthMask(true); // Re-enable depth buffer writes
+    }
   }
 }

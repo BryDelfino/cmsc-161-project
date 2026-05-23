@@ -7,6 +7,8 @@ class Carpet extends Node {
     this.slab.setParent(this);
     this.slab.translate([0, 0.01, 0]);
     this.slab.uvScale = [1.0, 1.0]; // one full texture across the rug disc
+    this.slab.shininess = 0.0;
+    this.slab.specularStrength = 0.0;
 
     this.scale([1.8, 1.0, 1.8]);
   }
@@ -19,8 +21,12 @@ class Carpet extends Node {
     mat4.rotate(this.localMatrix, this.localMatrix, rotY, [0, 1, 0]);
   }
 
-  draw(gl, viewProjection, rugTexture) {
+  draw(gl, viewProjection, rugTexture, shadowProgramInfo) {
+    if (rugTexture && typeof rugTexture === 'object' && rugTexture.program && rugTexture.locs) {
+      shadowProgramInfo = rugTexture;
+      rugTexture = null;
+    }
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.slab.draw(gl, viewProjection, rugTexture);
+    this.slab.draw(gl, viewProjection, rugTexture, shadowProgramInfo);
   }
 }

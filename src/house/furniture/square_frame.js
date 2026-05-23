@@ -11,8 +11,8 @@ class SquarePictureFrame extends Node {
     const frameDepth = 0.15;  // How far frame sticks out from wall
     const borderWidth = 0.15; // Thickness of wooden frame border
 
-    // Wooden frame color: dark brown
-    const frameColor = [139 / 255, 90 / 255, 43 / 255, 1.0];
+    // Wooden frame color: yellow
+    const frameColor = [240 / 255, 205 / 255, 60 / 255, 1.0];
     // Picture placeholder color: warm tan/beige
     const pictureColor = [210 / 255, 180 / 255, 140 / 255, 1.0];
 
@@ -53,6 +53,12 @@ class SquarePictureFrame extends Node {
     picture.translate([0, 0, frameDepth / 2 + 0.01]); // Slightly in front of frame
     picture.scale([pictureWidth, pictureHeight, 0.02]);
     this.meshes.push(picture);
+
+    // Apply wood shininess to the borders (first 4 meshes)
+    for (let i = 0; i < 4; i++) {
+      this.meshes[i].shininess = 20.0;
+      this.meshes[i].specularStrength = 0.3;
+    }
   }
 
   setTransform(pos, rotY = 0) {
@@ -61,10 +67,10 @@ class SquarePictureFrame extends Node {
     mat4.rotate(this.localMatrix, this.localMatrix, rotY, [0, 1, 0]);
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
     this.meshes.forEach(mesh => {
-      mesh.draw(gl, viewProjection);
+      mesh.draw(gl, viewProjection, shadowProgramInfo);
     });
   }
 }

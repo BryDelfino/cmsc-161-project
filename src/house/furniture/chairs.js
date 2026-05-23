@@ -1,5 +1,5 @@
 class RockingChair extends Node {
-  constructor(gl, solidRes, woodColor = [0.35, 0.2, 0.1, 1.0]) {
+  constructor(gl, solidRes, woodColor = [0.65, 0.45, 0.28, 1.0]) {
     super();
     this.woodColor = woodColor;
     this.parts = [];
@@ -65,26 +65,37 @@ class RockingChair extends Node {
     topRail.scale([0.9, 0.06, 0.06]);
     this.parts.push(topRail);
 
-    // Backrest vertical slats: height = 0.7, center at Y = 0.46 + 0.35 = 0.81
-    for (let i = -2; i <= 2; i++) {
-      const slat = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
-      slat.setParent(this);
-      slat.translate([i * 0.18, 0.81, -0.4]);
-      slat.scale([0.04, 0.7, 0.03]);
-      this.parts.push(slat);
-    }
+    // Backrest side frame posts: Y = 0.46 to 1.19, height = 0.73, center Y = 0.825
+    const leftPost = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
+    leftPost.setParent(this);
+    leftPost.translate([-0.42, 0.825, -0.4]);
+    leftPost.scale([0.04, 0.73, 0.04]);
+    this.parts.push(leftPost);
 
-    // Armrests: Y = 0.46 + 0.3 = 0.76
+    const rightPost = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
+    rightPost.setParent(this);
+    rightPost.translate([0.42, 0.825, -0.4]);
+    rightPost.scale([0.04, 0.73, 0.04]);
+    this.parts.push(rightPost);
+
+    // Horizontal bar covering the top portion of the backrest: height = 0.2, center Y = 1.06
+    const horizBar = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
+    horizBar.setParent(this);
+    horizBar.translate([0, 1.06, -0.4]);
+    horizBar.scale([0.80, 0.5, 0.03]);
+    this.parts.push(horizBar);
+
+    // Armrests: Y = 0.46 + 0.3 = 0.76, extended to Z = -0.4 to connect to backrest side frame
     const armLeft = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
     armLeft.setParent(this);
-    armLeft.translate([-0.42, 0.76, 0.05]);
-    armLeft.scale([0.06, 0.04, 0.8]);
+    armLeft.translate([-0.42, 0.76, 0.025]);
+    armLeft.scale([0.06, 0.04, 0.85]);
     this.parts.push(armLeft);
 
     const armRight = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
     armRight.setParent(this);
-    armRight.translate([0.42, 0.76, 0.05]);
-    armRight.scale([0.06, 0.04, 0.8]);
+    armRight.translate([0.42, 0.76, 0.025]);
+    armRight.scale([0.06, 0.04, 0.85]);
     this.parts.push(armRight);
 
     // Armrest vertical supports: Y = 0.46 + 0.15 = 0.61, height = 0.3
@@ -99,6 +110,12 @@ class RockingChair extends Node {
     supportRight.translate([0.42, 0.61, 0.35]);
     supportRight.scale([0.04, 0.3, 0.04]);
     this.parts.push(supportRight);
+
+    // Apply wood material properties to all rocking chair parts
+    this.parts.forEach(part => {
+      part.shininess = 20.0;
+      part.specularStrength = 0.3;
+    });
 
     this.scale([1.8, 1.8, 1.8]);
   }
@@ -154,9 +171,9 @@ class RockingChair extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.parts.forEach(part => part.draw(gl, viewProjection));
+    this.parts.forEach(part => part.draw(gl, viewProjection, shadowProgramInfo));
   }
 }
 
@@ -170,28 +187,23 @@ class RedCouch extends Node {
     const woodColor = [0.3, 0.18, 0.08, 1.0];
 
     // Bottom of the legs will sit at local Y = 0.
-    // Legs: height = 0.1, centered at Y = 0.05
+    // Legs: height = 0.2, centered at Y = 0.1
     const legCoords = [
-      [-0.38, 0.05, 0.35],
-      [0.38, 0.05, 0.35],
-      [-0.38, 0.05, -0.35],
-      [0.38, 0.05, -0.35]
+      [-0.38, 0.1, 0.35],
+      [0.38, 0.1, 0.35],
+      [-0.38, 0.1, -0.35],
+      [0.38, 0.1, -0.35]
     ];
     legCoords.forEach(coord => {
-      const leg = new Cylinder(gl, solidRes.program, solidRes.locs, 0.04, 0.04, 0.1, 8, woodColor);
+      const leg = new Cylinder(gl, solidRes.program, solidRes.locs, 0.04, 0.04, 0.2, 8, woodColor);
       leg.setParent(this);
       leg.translate(coord);
+      leg.shininess = 20.0;
+      leg.specularStrength = 0.3;
       this.parts.push(leg);
     });
 
-    // Base: height = 0.1, sits on top of legs (Y = 0.1 to 0.2, center at 0.15)
-    const base = new Wall(gl, solidRes.program, solidRes.locs, woodColor);
-    base.setParent(this);
-    base.translate([0, 0.15, 0]);
-    base.scale([0.85, 0.1, 0.85]);
-    this.parts.push(base);
-
-    // Seat cushion: height = 0.35, sits on base (Y = 0.2 to 0.55, center at 0.375)
+    // Seat cushion: height = 0.35, sits directly on legs (Y = 0.2 to 0.55, center at 0.375)
     const seat = new Wall(gl, solidRes.program, solidRes.locs, redColor);
     seat.setParent(this);
     seat.translate([0, 0.375, 0]);
@@ -211,6 +223,21 @@ class RedCouch extends Node {
     armRight.translate([0.46, 0.45, 0.02]);
     armRight.scale([0.16, 0.5, 0.8]);
     this.parts.push(armRight);
+
+    // White patches on the armrests (fabric protectors/caps)
+    const whiteColor = [1.0, 1.0, 1.0, 1.0];
+
+    const patchLeft = new Wall(gl, solidRes.program, solidRes.locs, whiteColor);
+    patchLeft.setParent(this);
+    patchLeft.translate([-0.46, 0.701, 0.05]);
+    patchLeft.scale([0.162, 0.02, 0.3]);
+    this.parts.push(patchLeft);
+
+    const patchRight = new Wall(gl, solidRes.program, solidRes.locs, whiteColor);
+    patchRight.setParent(this);
+    patchRight.translate([0.46, 0.701, 0.05]);
+    patchRight.scale([0.162, 0.02, 0.3]);
+    this.parts.push(patchRight);
 
     // Backrest: Y = 0.2 to 0.9, height = 0.7, center at 0.55. Relocated back to Z = -0.32
     const back = new Wall(gl, solidRes.program, solidRes.locs, redColor);
@@ -273,8 +300,8 @@ class RedCouch extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.parts.forEach(part => part.draw(gl, viewProjection));
+    this.parts.forEach(part => part.draw(gl, viewProjection, shadowProgramInfo));
   }
 }

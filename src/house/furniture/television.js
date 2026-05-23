@@ -3,6 +3,8 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
   const vertexData = [];
   const indexData = [];
 
+  const drdy = (radiusTop - radiusBottom) / height;
+
   // Generate side vertices
   for (let i = 0; i <= radialSegments; i++) {
     const angle = (i / radialSegments) * 2 * Math.PI;
@@ -10,17 +12,23 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
     const cos = Math.cos(angle);
     const u = i / radialSegments;
 
+    // Normal calculation: outwards
+    const len = Math.sqrt(cos * cos + drdy * drdy + sin * sin);
+    const nx = cos / len;
+    const ny = -drdy / len;
+    const nz = sin / len;
+
     // Top vertex
     const xTop = cos * radiusTop;
     const zTop = sin * radiusTop;
     const yTop = height / 2;
-    vertexData.push(xTop, yTop, zTop, 1.0, u, 1.0);
+    vertexData.push(xTop, yTop, zTop, 1.0, u, 1.0, nx, ny, nz);
 
     // Bottom vertex
     const xBot = cos * radiusBottom;
     const zBot = sin * radiusBottom;
     const yBot = -height / 2;
-    vertexData.push(xBot, yBot, zBot, 1.0, u, 0.0);
+    vertexData.push(xBot, yBot, zBot, 1.0, u, 0.0, nx, ny, nz);
   }
 
   // Generate side indices
@@ -37,11 +45,11 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
     indexData.push(idxTopCurrent, idxBotNext, idxTopNext);
   }
 
-  // Cap indices offsets
-  const capStartIdx = vertexData.length / 6;
+  // Cap indices offsets (divide by 9 because stride is now 9)
+  const capStartIdx = vertexData.length / 9;
 
   // Top Cap Center
-  vertexData.push(0, height / 2, 0, 1.0, 0.5, 0.5);
+  vertexData.push(0, height / 2, 0, 1.0, 0.5, 0.5, 0, 1, 0);
   // Top Cap perimeter
   for (let i = 0; i <= radialSegments; i++) {
     const angle = (i / radialSegments) * 2 * Math.PI;
@@ -49,7 +57,7 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
     const cos = Math.cos(angle);
     const u = (cos + 1) / 2;
     const v = (sin + 1) / 2;
-    vertexData.push(cos * radiusTop, height / 2, sin * radiusTop, 1.0, u, v);
+    vertexData.push(cos * radiusTop, height / 2, sin * radiusTop, 1.0, u, v, 0, 1, 0);
   }
   // Top Cap Triangles
   const centerTopIdx = capStartIdx;
@@ -58,8 +66,8 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
   }
 
   // Bottom Cap Center
-  const botCapStartIdx = vertexData.length / 6;
-  vertexData.push(0, -height / 2, 0, 1.0, 0.5, 0.5);
+  const botCapStartIdx = vertexData.length / 9;
+  vertexData.push(0, -height / 2, 0, 1.0, 0.5, 0.5, 0, -1, 0);
   // Bottom Cap perimeter
   for (let i = 0; i <= radialSegments; i++) {
     const angle = (i / radialSegments) * 2 * Math.PI;
@@ -67,7 +75,7 @@ function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegme
     const cos = Math.cos(angle);
     const u = (cos + 1) / 2;
     const v = (sin + 1) / 2;
-    vertexData.push(cos * radiusBottom, -height / 2, sin * radiusBottom, 1.0, u, v);
+    vertexData.push(cos * radiusBottom, -height / 2, sin * radiusBottom, 1.0, u, v, 0, -1, 0);
   }
   // Bottom Cap Triangles
   const centerBotIdx = botCapStartIdx;
@@ -98,41 +106,82 @@ class Cylinder extends Node {
     this.locs = locs;
     this.color = color;
     this.mesh = createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments);
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
   }
 
-  draw(gl, viewProjection, texture) {
-    if (!this.program) return;
-    gl.useProgram(this.program);
+  draw(gl, viewProjection, texture, shadowProgramInfo) {
+    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
+      shadowProgramInfo = texture;
+      texture = null;
+    }
+    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
+    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
+    if (!program) return;
+    gl.useProgram(program);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
-    gl.vertexAttribPointer(this.locs.pos, 4, gl.FLOAT, false, 24, 0);
-    gl.enableVertexAttribArray(this.locs.pos);
+    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(locs.pos);
 
-    if (this.locs.uv !== undefined && this.locs.uv !== -1) {
-      gl.vertexAttribPointer(this.locs.uv, 2, gl.FLOAT, false, 24, 16);
-      gl.enableVertexAttribArray(this.locs.uv);
+    if (!shadowProgramInfo) {
+      if (locs.uv !== undefined && locs.uv !== -1) {
+        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
+        gl.enableVertexAttribArray(locs.uv);
+      }
+
+      if (locs.normal !== undefined && locs.normal !== -1) {
+        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
+        gl.enableVertexAttribArray(locs.normal);
+      }
     }
 
     const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
-    gl.uniformMatrix4fv(this.locs.matrix, false, mvp);
+    gl.uniformMatrix4fv(locs.matrix, false, mvp);
 
-    if (this.locs.tex && texture) {
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.uniform1i(this.locs.tex, 0);
-
-      if (this.locs.uvScale) {
-        const uvs = this.uvScale || [1.0, 1.0];
-        gl.uniform2fv(this.locs.uvScale, uvs);
+    if (!shadowProgramInfo) {
+      if (locs.worldMatrix) {
+        gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
       }
-      if (this.locs.uvOffset) {
-        const uvo = this.uvOffset || [0.0, 0.0];
-        gl.uniform2fv(this.locs.uvOffset, uvo);
+      if (locs.worldInverseTranspose) {
+        const normalMatrix = mat4.create();
+        mat4.invert(normalMatrix, this.worldMatrix);
+        mat4.transpose(normalMatrix, normalMatrix);
+        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
       }
-    }
+      if (locs.shininess) {
+        gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+      }
+      if (locs.specularStrength) {
+        gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+      }
+      if (locs.emissive) {
+        gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+      }
+      if (locs.twoSided) {
+        gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+      }
 
-    if (this.locs.color) {
-      gl.uniform4fv(this.locs.color, this.color);
+      if (locs.tex && texture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(locs.tex, 0);
+
+        if (locs.uvScale) {
+          const uvs = this.uvScale || [1.0, 1.0];
+          gl.uniform2fv(locs.uvScale, uvs);
+        }
+        if (locs.uvOffset) {
+          const uvo = this.uvOffset || [0.0, 0.0];
+          gl.uniform2fv(locs.uvOffset, uvo);
+        }
+      }
+
+      if (locs.color) {
+        gl.uniform4fv(locs.color, this.color);
+      }
     }
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
@@ -141,22 +190,61 @@ class Cylinder extends Node {
 }
 
 class Television extends Node {
-  constructor(gl, solidRes) {
+  constructor(gl, solidRes, texRes) {
     super();
+    // Store the WebGL context for later use (e.g., updating video texture)
+    this.gl = gl;
 
     // Bottom of the legs will sit at local Y = 0.
     // Total height of legs = 0.4.
     // Cabinet is centered at Y = 0.4 + 0.65 = 1.05.
-    this.cabinet = new Wall(gl, solidRes.program, solidRes.locs, [0.28, 0.18, 0.11, 1.0]);
+    this.cabinet = new Wall(gl, solidRes.program, solidRes.locs, [0.65, 0.45, 0.28, 1.0]);
     this.cabinet.setParent(this);
+    this.cabinet.shininess = 20.0;
+    this.cabinet.specularStrength = 0.3;
     this.cabinet.translate([0, 1.05, 0]);
     this.cabinet.scale([1.6, 1.3, 1.0]);
 
-    // Screen: front face is +Z (local coordinate z = 0.5)
-    this.screen = new Wall(gl, solidRes.program, solidRes.locs, [0.15, 0.15, 0.15, 1.0]);
+    // Screen: uses textured shader so we can display video frames
+    this.screen = new Wall(gl, texRes.program, texRes.locs, [0.15, 0.15, 0.15, 1.0]);
     this.screen.setParent(this);
+    this.screen.shininess = 30.0;
+    this.screen.specularStrength = 0.5;
     this.screen.translate([-0.15, 1.1, 0.51]); // Shifted left to make room for knob/controls
     this.screen.scale([1.0, 0.9, 0.02]);
+    this.screen.emissive = 0.0;
+    // Create hidden video element for playback
+    this.video = document.createElement('video');
+    this.video.src = '../assets/textures/courage.mp4';
+    this.video.autoplay = false;
+    this.video.loop = true;
+    this.video.muted = true;
+    this.video.crossOrigin = 'anonymous';
+    // Create texture to hold video frames
+    this.videoTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.videoTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    // Initialize with a single black pixel
+    const blackPixel = new Uint8Array([0, 0, 0, 255]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, blackPixel);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    // Create a static 1x1 black texture for the off state
+    this.blackTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.blackTexture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, blackPixel);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    // Stretch horizontally to crop pillarbox bars (4:3 content in 16:9 frame)
+    this.screen.uvScale = [0.75, 1.0];
+    this.screen.uvOffset = [0.125, 0.0];
 
     // Dial panel background (recessed/different color)
     this.panel = new Wall(gl, solidRes.program, solidRes.locs, [0.25, 0.2, 0.15, 1.0]);
@@ -164,36 +252,80 @@ class Television extends Node {
     this.panel.translate([0.5, 1.1, 0.51]);
     this.panel.scale([0.25, 0.9, 0.02]);
 
-    // Knobs: Two round metallic dials
-    this.knob1 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.05, 0.05, 0.04, 12, [0.6, 0.6, 0.6, 1.0]);
-    this.knob1.setParent(this);
-    this.knob1.translate([0.5, 1.3, 0.53]);
-    this.knob1.rotate(Math.PI / 2, [1, 0, 0]); // rotate to face forward
+    // Main Knob: bigger knob with a handle
+    this.mainKnob = new Cylinder(gl, solidRes.program, solidRes.locs, 0.06, 0.06, 0.04, 16, [0.4, 0.4, 0.4, 1.0]);
+    this.mainKnob.setParent(this);
+    this.mainKnob.shininess = 80.0;
+    this.mainKnob.specularStrength = 1.0;
+    this.mainKnob.translate([0.5, 1.4, 0.53]);
+    this.mainKnob.rotate(Math.PI / 2, [1, 0, 0]); // rotate to face forward
 
-    this.knob2 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.05, 0.05, 0.04, 12, [0.6, 0.6, 0.6, 1.0]);
+    this.mainKnobHandle = new Wall(gl, solidRes.program, solidRes.locs, [0.75, 0.75, 0.75, 1.0]);
+    this.mainKnobHandle.setParent(this.mainKnob);
+    this.mainKnobHandle.shininess = 80.0;
+    this.mainKnobHandle.specularStrength = 1.0;
+    this.mainKnobHandle.translate([0, 0.03, 0]); // bottom of handle is on top cap
+    this.mainKnobHandle.scale([0.02, 0.02, 0.10]); // rectangular bar across face
+
+    // Buttons (formerly knobs): Two smaller round buttons
+    this.knob1 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.035, 0.035, 0.03, 12, [0.6, 0.6, 0.6, 1.0]);
+    this.knob1.setParent(this);
+    this.knob1.shininess = 80.0;
+    this.knob1.specularStrength = 1.0;
+    this.knob1.translate([0.5, 1.22, 0.53]);
+    this.knob1.rotate(Math.PI / 2, [1, 0, 0]);
+
+    this.knob2 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.035, 0.035, 0.03, 12, [0.6, 0.6, 0.6, 1.0]);
     this.knob2.setParent(this);
-    this.knob2.translate([0.5, 1.1, 0.53]);
+    this.knob2.shininess = 80.0;
+    this.knob2.specularStrength = 1.0;
+    this.knob2.translate([0.5, 1.05, 0.53]);
     this.knob2.rotate(Math.PI / 2, [1, 0, 0]);
+
+    // CRT Back Cone & Neck
+    this.crtCone = new Cylinder(gl, solidRes.program, solidRes.locs, 0.35, 0.15, 0.4, 16, [0.35, 0.35, 0.35, 1.0]);
+    this.crtCone.setParent(this);
+    this.crtCone.shininess = 80.0;
+    this.crtCone.specularStrength = 1.0;
+    this.crtCone.translate([0, 1.0, -0.7]);
+    this.crtCone.scale([1.5, 1.5, 1.5]);
+    this.crtCone.rotate(Math.PI / 2, [1, 0, 0]);
+
+    this.crtNeck = new Cylinder(gl, solidRes.program, solidRes.locs, 0.08, 0.08, 0.15, 12, [0.35, 0.35, 0.35, 1.0]);
+    this.crtNeck.setParent(this.crtCone);
+    this.crtNeck.shininess = 80.0;
+    this.crtNeck.specularStrength = 1.0;
+    this.crtNeck.translate([0, -0.275, 0]);
+    this.crtNeck.scale([1.0, 1.0, 1.0]);
+    this.crtNeck.rotate(0, [1, 0, 0]);
 
     // Speaker grille: horizontal bars
     this.grille = new Wall(gl, solidRes.program, solidRes.locs, [0.1, 0.1, 0.1, 1.0]);
     this.grille.setParent(this);
+    this.grille.shininess = 80.0;
+    this.grille.specularStrength = 1.0;
     this.grille.translate([0.5, 0.8, 0.53]);
     this.grille.scale([0.2, 0.2, 0.01]);
 
     // Antenna base
     this.antennaBase = new Sphere(gl, solidRes.program, solidRes.locs, 0.08, 12, 12, [0.3, 0.3, 0.3, 1.0]);
     this.antennaBase.setParent(this);
+    this.antennaBase.shininess = 80.0;
+    this.antennaBase.specularStrength = 1.0;
     this.antennaBase.translate([0.0, 1.74, 0.0]);
 
     // Antenna rods (V-shape)
     this.rodLeft = new Cylinder(gl, solidRes.program, solidRes.locs, 0.012, 0.012, 0.8, 8, [0.7, 0.7, 0.7, 1.0]);
     this.rodLeft.setParent(this);
+    this.rodLeft.shininess = 80.0;
+    this.rodLeft.specularStrength = 1.0;
     this.rodLeft.translate([-0.25, 2.05, 0.0]);
     this.rodLeft.rotate(Math.PI / 6, [0, 0, 1]); // Tilt left
 
     this.rodRight = new Cylinder(gl, solidRes.program, solidRes.locs, 0.012, 0.012, 0.8, 8, [0.7, 0.7, 0.7, 1.0]);
     this.rodRight.setParent(this);
+    this.rodRight.shininess = 80.0;
+    this.rodRight.specularStrength = 1.0;
     this.rodRight.translate([0.25, 2.05, 0.0]);
     this.rodRight.rotate(-Math.PI / 6, [0, 0, 1]); // Tilt right
 
@@ -206,8 +338,10 @@ class Television extends Node {
       [0.6, 0.2, -0.35]
     ];
     legCoords.forEach((coord) => {
-      const leg = new Cylinder(gl, solidRes.program, solidRes.locs, 0.04, 0.02, 0.4, 8, [0.2, 0.15, 0.1, 1.0]);
+      const leg = new Cylinder(gl, solidRes.program, solidRes.locs, 0.04, 0.02, 0.4, 8, [0.55, 0.38, 0.23, 1.0]);
       leg.setParent(this);
+      leg.shininess = 20.0;
+      leg.specularStrength = 0.3;
       leg.translate(coord);
       // Angle them outward slightly
       const rotZ = coord[0] < 0 ? -0.15 : 0.15;
@@ -218,46 +352,70 @@ class Television extends Node {
     });
 
     this.isOn = false;
-    this.currentKnobAngle = 0.0;
-    this.targetKnobAngle = 0.0;
+    this.buttonPushTimer = 0.0;
+    this.buttonPushDuration = 0.25;
     this.scale([0.4, 0.4, 0.4]);
   }
 
   toggle() {
     this.isOn = !this.isOn;
-    this.targetKnobAngle = this.isOn ? Math.PI / 4 : 0.0;
+    this.buttonPushTimer = this.buttonPushDuration;
     this.updateVisuals();
     console.log("Television toggled:", this.isOn ? "ON" : "OFF");
   }
 
   updateVisuals() {
     if (this.screen) {
-      this.screen.color = this.isOn ? [0.5, 0.8, 1.0, 1.0] : [0.15, 0.15, 0.15, 1.0];
+      this.screen.emissive = this.isOn ? 1.0 : 0.0;
+    }
+    if (this.isOn) {
+      // Start video playback when TV turns on
+      if (this.video && this.video.paused) {
+        this.video.play();
+      }
+    } else {
+      if (this.video && !this.video.paused) {
+        this.video.pause();
+        this.video.currentTime = 0;
+      }
     }
   }
 
   update(deltaTime) {
-    const knobSpeed = 12.0;
-    if (this.currentKnobAngle < this.targetKnobAngle) {
-      this.currentKnobAngle = Math.min(this.targetKnobAngle, this.currentKnobAngle + knobSpeed * deltaTime);
-    } else if (this.currentKnobAngle > this.targetKnobAngle) {
-      this.currentKnobAngle = Math.max(this.targetKnobAngle, this.currentKnobAngle - knobSpeed * deltaTime);
+    if (this.buttonPushTimer > 0) {
+      this.buttonPushTimer = Math.max(0.0, this.buttonPushTimer - deltaTime);
+    }
+
+    // Update video texture each frame when TV is on
+    if (this.isOn && this.video && this.video.readyState >= this.video.HAVE_CURRENT_DATA) {
+      const gl = this._glCache;
+      if (gl) {
+        gl.bindTexture(gl.TEXTURE_2D, this.videoTexture);
+        // Flip Y so the video is right-side up
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.video);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+      }
     }
 
     if (this.knob1) {
+      const pushDepth = 0.025 * Math.sin((this.buttonPushTimer / this.buttonPushDuration) * Math.PI);
       this.knob1.localMatrix = mat4.create();
-      mat4.translate(this.knob1.localMatrix, this.knob1.localMatrix, [0.5, 1.3, 0.53]);
+      mat4.translate(this.knob1.localMatrix, this.knob1.localMatrix, [0.5, 1.22, 0.53 - pushDepth]);
       mat4.rotateX(this.knob1.localMatrix, this.knob1.localMatrix, Math.PI / 2);
-      mat4.rotateZ(this.knob1.localMatrix, this.knob1.localMatrix, this.currentKnobAngle);
     }
   }
 
   setTransform(pos, rotY) {
     this.position = pos;
     this.rotation = rotY;
+    // Ensure local matrix is reset for each transform
     this.localMatrix = mat4.create();
     mat4.translate(this.localMatrix, this.localMatrix, pos);
     mat4.rotate(this.localMatrix, this.localMatrix, rotY, [0, 1, 0]);
+    // Cache gl context for video texture updates
+    this._glCache = this.gl;
     mat4.scale(this.localMatrix, this.localMatrix, [1, 1, 1]);
   }
 
@@ -304,17 +462,26 @@ class Television extends Node {
     return { minX, maxX, minY, maxY, minZ, maxZ };
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
-    this.cabinet.draw(gl, viewProjection);
-    this.screen.draw(gl, viewProjection);
-    this.panel.draw(gl, viewProjection);
-    this.knob1.draw(gl, viewProjection);
-    this.knob2.draw(gl, viewProjection);
-    this.grille.draw(gl, viewProjection);
-    this.antennaBase.draw(gl, viewProjection);
-    this.rodLeft.draw(gl, viewProjection);
-    this.rodRight.draw(gl, viewProjection);
-    this.legs.forEach(leg => leg.draw(gl, viewProjection));
+    this.cabinet.draw(gl, viewProjection, null, shadowProgramInfo);
+    // Draw screen with video texture when on, black texture when off
+    if (this.isOn && this.videoTexture) {
+      this.screen.draw(gl, viewProjection, this.videoTexture, shadowProgramInfo);
+    } else {
+      this.screen.draw(gl, viewProjection, this.blackTexture, shadowProgramInfo);
+    }
+    this.panel.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.mainKnob.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.mainKnobHandle.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.knob1.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.knob2.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.crtCone.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.crtNeck.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.grille.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.antennaBase.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.rodLeft.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.rodRight.draw(gl, viewProjection, null, shadowProgramInfo);
+    this.legs.forEach(leg => leg.draw(gl, viewProjection, null, shadowProgramInfo));
   }
 }

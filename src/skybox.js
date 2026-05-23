@@ -7,7 +7,7 @@ class Skybox {
     // Create a 2D quad covering the screen
     this.buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
 
     this.texture = this.loadCubemap(faceUrls);
   }
@@ -29,7 +29,7 @@ class Skybox {
     faceInfos.forEach((face) => {
       // Placeholder while loading
       gl.texImage2D(face.target, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
-      
+
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = face.url;
@@ -56,11 +56,13 @@ class Skybox {
     // Remove translation from view matrix for skybox
     const skyboxView = mat4.clone(viewMatrix);
     skyboxView[12] = 0; skyboxView[13] = 0; skyboxView[14] = 0;
-    
+
+    mat4.rotateY(skyboxView, skyboxView, Math.PI);
+
     const viewProjInv = mat4.invert(mat4.create(), mat4.multiply(mat4.create(), projectionMatrix, skyboxView));
     gl.uniformMatrix4fv(this.locs.viewInv, false, viewProjInv);
     gl.uniform1i(this.locs.tex, 0);
-    
+
     gl.depthFunc(gl.LEQUAL);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }

@@ -31,8 +31,8 @@ class Window extends Node {
     const h = this.height;
     const t = this.thickness;
 
-    // Wooden frame color: elegant wainscoting brown
-    const frameColor = [139 / 255, 90 / 255, 43 / 255, 1.0];
+    // Wooden frame color: light brown
+    const frameColor = [0.65, 0.45, 0.28, 1.0];
     const frameThickness = 0.22; // slightly thicker than 0.2 wall to avoid z-fighting
     const border = 0.1; // border thickness of the frame
 
@@ -111,20 +111,35 @@ class Window extends Node {
     // Sized to fit exactly inside the frame
     glass.scale([w - 2 * border, h - 2 * border, 0.02]);
     this.transparentMeshes.push(glass);
+
+    // Apply materials
+    this.solidMeshes.forEach(mesh => {
+      mesh.shininess = 20.0;
+      mesh.specularStrength = 0.3;
+    });
+    this.transparentMeshes.forEach(mesh => {
+      mesh.shininess = 50.0;
+      mesh.specularStrength = 0.8;
+      mesh.twoSided = 1.0;
+    });
   }
 
-  draw(gl, viewProjection, pass = 'all') {
+  draw(gl, viewProjection, pass = 'all', shadowProgramInfo) {
+    if (pass && typeof pass === 'object') {
+      shadowProgramInfo = pass;
+      pass = 'all';
+    }
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
 
     if (pass === 'all' || pass === 'opaque') {
       this.solidMeshes.forEach(mesh => {
-        mesh.draw(gl, viewProjection);
+        mesh.draw(gl, viewProjection, null, shadowProgramInfo);
       });
     }
 
     if (pass === 'all' || pass === 'transparent') {
       this.transparentMeshes.forEach(mesh => {
-        mesh.draw(gl, viewProjection);
+        mesh.draw(gl, viewProjection, null, shadowProgramInfo);
       });
     }
   }

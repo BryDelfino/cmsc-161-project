@@ -71,6 +71,8 @@ class Lightswitch extends Node {
     const plate = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.8, 0.8, 0.8, 1.0]);
     plate.setParent(this);
     plate.scale([w, h, t]);
+    plate.shininess = 80.0;
+    plate.specularStrength = 1.0;
     this.solidMeshes.push(plate);
 
     // Inner dark grey border insert for visual depth
@@ -78,6 +80,8 @@ class Lightswitch extends Node {
     border.setParent(this);
     border.translate([0, 0, t / 2 + 0.001]);
     border.scale([w - 0.03, h - 0.03, 0.005]);
+    border.shininess = 30.0;
+    border.specularStrength = 0.5;
     this.solidMeshes.push(border);
 
     // 2. Rocker Switch Button (animates via localMatrix in update)
@@ -86,6 +90,8 @@ class Lightswitch extends Node {
     // Initial placement on the front surface
     this.rockerMesh.translate([0, 0, t / 2]);
     this.rockerMesh.scale([0.06, 0.12, 0.03]);
+    this.rockerMesh.shininess = 50.0;
+    this.rockerMesh.specularStrength = 0.8;
     this.solidMeshes.push(this.rockerMesh);
 
     // 3. Status LED (glowing sphere near the top edge)
@@ -93,19 +99,22 @@ class Lightswitch extends Node {
     this.ledMesh = new Sphere(gl, this.solidRes.program, this.solidRes.locs, 0.015, 8, 8, ledColor);
     this.ledMesh.setParent(this);
     this.ledMesh.translate([0, 0.1, t / 2 + 0.01]);
+    this.ledMesh.shininess = 50.0;
+    this.ledMesh.specularStrength = 0.8;
+    this.ledMesh.emissive = 1.0;
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
 
     // Draw plate, border, rocker, etc.
     this.solidMeshes.forEach(mesh => {
-      mesh.draw(gl, viewProjection);
+      mesh.draw(gl, viewProjection, shadowProgramInfo);
     });
 
     // Draw status LED
     if (this.ledMesh) {
-      this.ledMesh.draw(gl, viewProjection);
+      this.ledMesh.draw(gl, viewProjection, shadowProgramInfo);
     }
   }
 }
