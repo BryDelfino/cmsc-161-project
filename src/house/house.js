@@ -371,7 +371,7 @@ class House extends Node {
 
     // --- Picture Frames ---
     // Square frame near the stairs
-    this.squareFrame = new SquarePictureFrame(gl, solidRes);
+    this.squareFrame = new SquarePictureFrame(gl, solidRes, texRes, wallTextures.noodles);
     this.squareFrame.setParent(this);
     this.squareFrame.setTransform([9.660, 3.2, 9.125], Math.PI / 2);
 
