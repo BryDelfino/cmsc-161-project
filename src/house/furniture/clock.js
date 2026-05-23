@@ -77,7 +77,7 @@ class GrandfatherClock extends Node {
     this.frontBottom = frontBottom;
 
     // Waist glass window cutout (overlayed glass pane, semi-transparent blue glass)
-    const windowGlass = new Wall(gl, solidRes.program, solidRes.locs, [0.1, 0.15, 0.2, 0.5]);
+    const windowGlass = new Wall(gl, solidRes.program, solidRes.locs, [0.1, 0.15, 0.2, 0.2]);
     windowGlass.setParent(this);
     windowGlass.translate([0, 1.1, 0.18]);
     windowGlass.scale([0.34, 0.9, 0.01]);
@@ -222,25 +222,25 @@ class GrandfatherClock extends Node {
     }
   }
 
-  draw(gl, viewProjection) {
+  draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
 
     // Draw wood solid segments
-    this.base.draw(gl, viewProjection);
-    this.waistBack.draw(gl, viewProjection);
-    this.waistLeft.draw(gl, viewProjection);
-    this.waistRight.draw(gl, viewProjection);
-    this.frontLeft.draw(gl, viewProjection);
-    this.frontRight.draw(gl, viewProjection);
-    this.frontTop.draw(gl, viewProjection);
-    this.frontBottom.draw(gl, viewProjection);
-    this.hood.draw(gl, viewProjection);
-    this.crown.draw(gl, viewProjection);
+    this.base.draw(gl, viewProjection, shadowProgramInfo);
+    this.waistBack.draw(gl, viewProjection, shadowProgramInfo);
+    this.waistLeft.draw(gl, viewProjection, shadowProgramInfo);
+    this.waistRight.draw(gl, viewProjection, shadowProgramInfo);
+    this.frontLeft.draw(gl, viewProjection, shadowProgramInfo);
+    this.frontRight.draw(gl, viewProjection, shadowProgramInfo);
+    this.frontTop.draw(gl, viewProjection, shadowProgramInfo);
+    this.frontBottom.draw(gl, viewProjection, shadowProgramInfo);
+    this.hood.draw(gl, viewProjection, shadowProgramInfo);
+    this.crown.draw(gl, viewProjection, shadowProgramInfo);
 
     // Draw solid components
-    this.parts.forEach(part => part.draw(gl, viewProjection));
+    this.parts.forEach(part => part.draw(gl, viewProjection, shadowProgramInfo));
 
     // Draw transparent glass window with alpha blending
-    this.windowGlass.draw(gl, viewProjection);
+    this.windowGlass.draw(gl, viewProjection, shadowProgramInfo);
   }
 }
