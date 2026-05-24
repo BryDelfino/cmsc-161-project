@@ -69,7 +69,7 @@ class Camera {
     return standingHeight;
   }
 
-  update(deltaTime, walls = [], walkableNodes = []) {
+  update(deltaTime, cubes = [], walkableNodes = []) {
     const moveSpeed = 5 * deltaTime;
     const forward = vec3.fromValues(Math.cos(this.yaw), 0, Math.sin(this.yaw));
     const right = vec3.fromValues(-Math.sin(this.yaw), 0, Math.cos(this.yaw));
@@ -88,18 +88,16 @@ class Camera {
       vec3.scale(moveDir, moveDir, moveSpeed);
       
       const playerRadius = 0.5;
-
-      // Update Y collision range dynamically based on current player position Y (feet to head)
       const pMinY = this.position[1] - 2.5; 
       const pMaxY = this.position[1] + 0.2;
 
       // Check X movement
       let testX = this.position[0] + moveDir[0];
       let collisionX = false;
-      for (const w of walls) {
-        if (testX + playerRadius > w.bounds.minX && testX - playerRadius < w.bounds.maxX &&
-            this.position[2] + playerRadius > w.bounds.minZ && this.position[2] - playerRadius < w.bounds.maxZ &&
-            pMaxY > w.bounds.minY && pMinY < w.bounds.maxY) {
+      for (const c of cubes) {
+        if (testX + playerRadius > c.bounds.minX && testX - playerRadius < c.bounds.maxX &&
+            this.position[2] + playerRadius > c.bounds.minZ && this.position[2] - playerRadius < c.bounds.maxZ &&
+            pMaxY > c.bounds.minY && pMinY < c.bounds.maxY) {
           collisionX = true;
           break;
         }
@@ -109,10 +107,10 @@ class Camera {
       // Check Z movement
       let testZ = this.position[2] + moveDir[2];
       let collisionZ = false;
-      for (const w of walls) {
-        if (this.position[0] + playerRadius > w.bounds.minX && this.position[0] - playerRadius < w.bounds.maxX &&
-            testZ + playerRadius > w.bounds.minZ && testZ - playerRadius < w.bounds.maxZ &&
-            pMaxY > w.bounds.minY && pMinY < w.bounds.maxY) {
+      for (const c of cubes) {
+        if (this.position[0] + playerRadius > c.bounds.minX && this.position[0] - playerRadius < c.bounds.maxX &&
+            testZ + playerRadius > c.bounds.minZ && testZ - playerRadius < c.bounds.maxZ &&
+            pMaxY > c.bounds.minY && pMinY < c.bounds.maxY) {
           collisionZ = true;
           break;
         }
@@ -120,13 +118,11 @@ class Camera {
       if (!collisionZ) nextZ = testZ;
     }
 
-    // Apply horizontal position updates
     this.position[0] = nextX;
     this.position[2] = nextZ;
 
-    // Smoothly interpolate the player's Y position to the target eye level
     const standingHeight = this.getStandingHeight(this.position[0], this.position[2], walkableNodes);
-    const targetY = standingHeight + 2.5; // eye height offset is 2.5 units
+    const targetY = standingHeight + 2.5;
     this.position[1] += (targetY - this.position[1]) * Math.min(1.0, 15.0 * deltaTime);
   }
 
