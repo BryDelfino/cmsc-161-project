@@ -180,7 +180,7 @@ function main() {
   }
 
   // Load all user requested JPEG textures from assets/textures/
-  const houseTextures = {
+  const cubeTextures = {
     outside: loadTexture(gl, "../assets/textures/outsidewall.jpg", [220, 220, 220, 255]),
     floor: loadTexture(gl, "../assets/textures/floor.jpg", [139, 69, 19, 255]),
     livingRoom: loadTexture(gl, "../assets/textures/living_room.jpg", [240, 230, 210, 255]),
@@ -193,7 +193,7 @@ function main() {
   const house = new House(gl,
     { program: solidProgram, locs: solidLocs }, // Solid Resources
     { program: texProgram, locs: texLocs },     // Texture Resources
-    houseTextures
+    cubeTextures
   );
 
   // Compute initial world matrices immediately
@@ -470,8 +470,8 @@ function main() {
     // Advance door swinging animations
     house.update(deltaTime);
 
-    // Update Camera (with dynamic door and static wall collisions, and walkable platforms)
-    camera.update(deltaTime, house.getCollisionWalls(), house.getWalkableNodes());
+    // Update Camera
+    camera.update(deltaTime, house.getCollisionCubes(), house.getWalkableNodes());
 
     // Update HUD overlay interaction prompt based on door/lightswitch/lamp/TV proximity
     const promptDiv = document.querySelector("#interaction-prompt");
