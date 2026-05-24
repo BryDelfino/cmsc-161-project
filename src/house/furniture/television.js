@@ -1,238 +1,43 @@
-// Cylinder shape geometry and node definitions
-function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments) {
-  const vertexData = [];
-  const indexData = [];
-
-  const drdy = (radiusTop - radiusBottom) / height;
-
-  // Generate side vertices
-  for (let i = 0; i <= radialSegments; i++) {
-    const angle = (i / radialSegments) * 2 * Math.PI;
-    const sin = Math.sin(angle);
-    const cos = Math.cos(angle);
-    const u = i / radialSegments;
-
-    // Normal calculation: outwards
-    const len = Math.sqrt(cos * cos + drdy * drdy + sin * sin);
-    const nx = cos / len;
-    const ny = -drdy / len;
-    const nz = sin / len;
-
-    // Top vertex
-    const xTop = cos * radiusTop;
-    const zTop = sin * radiusTop;
-    const yTop = height / 2;
-    vertexData.push(xTop, yTop, zTop, 1.0, u, 1.0, nx, ny, nz);
-
-    // Bottom vertex
-    const xBot = cos * radiusBottom;
-    const zBot = sin * radiusBottom;
-    const yBot = -height / 2;
-    vertexData.push(xBot, yBot, zBot, 1.0, u, 0.0, nx, ny, nz);
-  }
-
-  // Generate side indices
-  for (let i = 0; i < radialSegments; i++) {
-    const next = i + 1;
-    const idxTopCurrent = i * 2;
-    const idxBotCurrent = i * 2 + 1;
-    const idxTopNext = next * 2;
-    const idxBotNext = next * 2 + 1;
-
-    // Triangle 1: TopCurrent -> BotCurrent -> BotNext
-    indexData.push(idxTopCurrent, idxBotCurrent, idxBotNext);
-    // Triangle 2: TopCurrent -> BotNext -> TopNext
-    indexData.push(idxTopCurrent, idxBotNext, idxTopNext);
-  }
-
-  // Cap indices offsets (divide by 9 because stride is now 9)
-  const capStartIdx = vertexData.length / 9;
-
-  // Top Cap Center
-  vertexData.push(0, height / 2, 0, 1.0, 0.5, 0.5, 0, 1, 0);
-  // Top Cap perimeter
-  for (let i = 0; i <= radialSegments; i++) {
-    const angle = (i / radialSegments) * 2 * Math.PI;
-    const sin = Math.sin(angle);
-    const cos = Math.cos(angle);
-    const u = (cos + 1) / 2;
-    const v = (sin + 1) / 2;
-    vertexData.push(cos * radiusTop, height / 2, sin * radiusTop, 1.0, u, v, 0, 1, 0);
-  }
-  // Top Cap Triangles
-  const centerTopIdx = capStartIdx;
-  for (let i = 0; i < radialSegments; i++) {
-    indexData.push(centerTopIdx, centerTopIdx + 1 + i, centerTopIdx + 2 + i);
-  }
-
-  // Bottom Cap Center
-  const botCapStartIdx = vertexData.length / 9;
-  vertexData.push(0, -height / 2, 0, 1.0, 0.5, 0.5, 0, -1, 0);
-  // Bottom Cap perimeter
-  for (let i = 0; i <= radialSegments; i++) {
-    const angle = (i / radialSegments) * 2 * Math.PI;
-    const sin = Math.sin(angle);
-    const cos = Math.cos(angle);
-    const u = (cos + 1) / 2;
-    const v = (sin + 1) / 2;
-    vertexData.push(cos * radiusBottom, -height / 2, sin * radiusBottom, 1.0, u, v, 0, -1, 0);
-  }
-  // Bottom Cap Triangles
-  const centerBotIdx = botCapStartIdx;
-  for (let i = 0; i < radialSegments; i++) {
-    indexData.push(centerBotIdx, centerBotIdx + 2 + i, centerBotIdx + 1 + i);
-  }
-
-  const vbuf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
-
-  const ibuf = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibuf);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
-
-  return {
-    vbuf: vbuf,
-    ibuf: ibuf,
-    count: indexData.length
-  };
-}
-
-// Cylinder object.
-class Cylinder extends Node {
-  constructor(gl, program, locs, radiusTop, radiusBottom, height, radialSegments = 16, color = [0.8, 0.7, 0.5, 1.0]) {
-    super();
-    this.program = program;
-    this.locs = locs;
-    this.color = color;
-    this.mesh = createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments);
-    this.shininess = 1.0;
-    this.specularStrength = 0.0;
-    this.emissive = 0.0;
-    this.twoSided = 0.0;
-  }
-
-  draw(gl, viewProjection, texture, shadowProgramInfo) {
-    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
-      shadowProgramInfo = texture;
-      texture = null;
-    }
-    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
-    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
-    if (!program) return;
-    gl.useProgram(program);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
-    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
-    gl.enableVertexAttribArray(locs.pos);
-
-    if (!shadowProgramInfo) {
-      if (locs.uv !== undefined && locs.uv !== -1) {
-        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
-        gl.enableVertexAttribArray(locs.uv);
-      }
-
-      if (locs.normal !== undefined && locs.normal !== -1) {
-        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
-        gl.enableVertexAttribArray(locs.normal);
-      }
-    }
-
-    const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
-    gl.uniformMatrix4fv(locs.matrix, false, mvp);
-
-    if (!shadowProgramInfo) {
-      if (locs.worldMatrix) {
-        gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
-      }
-      if (locs.worldInverseTranspose) {
-        const normalMatrix = mat4.create();
-        mat4.invert(normalMatrix, this.worldMatrix);
-        mat4.transpose(normalMatrix, normalMatrix);
-        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
-      }
-      if (locs.shininess) {
-        gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
-      }
-      if (locs.specularStrength) {
-        gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
-      }
-      if (locs.emissive) {
-        gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
-      }
-      if (locs.twoSided) {
-        gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
-      }
-
-      if (locs.tex && texture) {
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.uniform1i(locs.tex, 0);
-
-        if (locs.uvScale) {
-          const uvs = this.uvScale || [1.0, 1.0];
-          gl.uniform2fv(locs.uvScale, uvs);
-        }
-        if (locs.uvOffset) {
-          const uvo = this.uvOffset || [0.0, 0.0];
-          gl.uniform2fv(locs.uvOffset, uvo);
-        }
-      }
-
-      if (locs.color) {
-        gl.uniform4fv(locs.color, this.color);
-      }
-    }
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
-    gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
-  }
-}
-
 class Television extends Node {
   constructor(gl, solidRes, texRes) {
     super();
-    // Store the WebGL context for later use (e.g., updating video texture)
     this.gl = gl;
 
-    // Bottom of the legs will sit at local Y = 0.
-    // Total height of legs = 0.4.
-    // Cabinet is centered at Y = 0.4 + 0.65 = 1.05.
-    this.cabinet = new Wall(gl, solidRes.program, solidRes.locs, [0.65, 0.45, 0.28, 1.0]);
+    // Cabinet
+    this.cabinet = new Cube(gl, solidRes.program, solidRes.locs, [0.65, 0.45, 0.28, 1.0]);
     this.cabinet.setParent(this);
     this.cabinet.shininess = 20.0;
     this.cabinet.specularStrength = 0.3;
     this.cabinet.translate([0, 1.05, 0]);
     this.cabinet.scale([1.6, 1.3, 1.0]);
 
-    // Screen: uses textured shader so we can display video frames
-    this.screen = new Wall(gl, texRes.program, texRes.locs, [0.15, 0.15, 0.15, 1.0]);
+    // Screen
+    this.screen = new Cube(gl, texRes.program, texRes.locs, [0.15, 0.15, 0.15, 1.0]);
     this.screen.setParent(this);
     this.screen.shininess = 30.0;
     this.screen.specularStrength = 0.5;
-    this.screen.translate([-0.15, 1.1, 0.51]); // Shifted left to make room for knob/controls
+    this.screen.translate([-0.15, 1.1, 0.51]);
     this.screen.scale([1.0, 0.9, 0.02]);
     this.screen.emissive = 0.0;
-    // Create hidden video element for playback
+
+    // Video playback setup
     this.video = document.createElement('video');
     this.video.src = '../assets/textures/courage.mp4';
     this.video.autoplay = false;
     this.video.loop = true;
     this.video.muted = true;
     this.video.crossOrigin = 'anonymous';
-    // Create texture to hold video frames
+
     this.videoTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.videoTexture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    // Initialize with a single black pixel
     const blackPixel = new Uint8Array([0, 0, 0, 255]);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, blackPixel);
     gl.bindTexture(gl.TEXTURE_2D, null);
 
-    // Create a static 1x1 black texture for the off state
     this.blackTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.blackTexture);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -242,32 +47,31 @@ class Television extends Node {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, blackPixel);
     gl.bindTexture(gl.TEXTURE_2D, null);
 
-    // Stretch horizontally to crop pillarbox bars (4:3 content in 16:9 frame)
     this.screen.uvScale = [0.75, 1.0];
     this.screen.uvOffset = [0.125, 0.0];
 
-    // Dial panel background (recessed/different color)
-    this.panel = new Wall(gl, solidRes.program, solidRes.locs, [0.25, 0.2, 0.15, 1.0]);
+    // Dial panel
+    this.panel = new Cube(gl, solidRes.program, solidRes.locs, [0.25, 0.2, 0.15, 1.0]);
     this.panel.setParent(this);
     this.panel.translate([0.5, 1.1, 0.51]);
     this.panel.scale([0.25, 0.9, 0.02]);
 
-    // Main Knob: bigger knob with a handle
+    // Main knob
     this.mainKnob = new Cylinder(gl, solidRes.program, solidRes.locs, 0.06, 0.06, 0.04, 16, [0.4, 0.4, 0.4, 1.0]);
     this.mainKnob.setParent(this);
     this.mainKnob.shininess = 80.0;
     this.mainKnob.specularStrength = 1.0;
     this.mainKnob.translate([0.5, 1.4, 0.53]);
-    this.mainKnob.rotate(Math.PI / 2, [1, 0, 0]); // rotate to face forward
+    this.mainKnob.rotate(Math.PI / 2, [1, 0, 0]);
 
-    this.mainKnobHandle = new Wall(gl, solidRes.program, solidRes.locs, [0.75, 0.75, 0.75, 1.0]);
+    this.mainKnobHandle = new Cube(gl, solidRes.program, solidRes.locs, [0.75, 0.75, 0.75, 1.0]);
     this.mainKnobHandle.setParent(this.mainKnob);
     this.mainKnobHandle.shininess = 80.0;
     this.mainKnobHandle.specularStrength = 1.0;
-    this.mainKnobHandle.translate([0, 0.03, 0]); // bottom of handle is on top cap
-    this.mainKnobHandle.scale([0.02, 0.02, 0.10]); // rectangular bar across face
+    this.mainKnobHandle.translate([0, 0.03, 0]);
+    this.mainKnobHandle.scale([0.02, 0.02, 0.10]);
 
-    // Buttons (formerly knobs): Two smaller round buttons
+    // Secondary knobs
     this.knob1 = new Cylinder(gl, solidRes.program, solidRes.locs, 0.035, 0.035, 0.03, 12, [0.6, 0.6, 0.6, 1.0]);
     this.knob1.setParent(this);
     this.knob1.shininess = 80.0;
@@ -282,7 +86,7 @@ class Television extends Node {
     this.knob2.translate([0.5, 1.05, 0.53]);
     this.knob2.rotate(Math.PI / 2, [1, 0, 0]);
 
-    // CRT Back Cone & Neck
+    // CRT structures
     this.crtCone = new Cylinder(gl, solidRes.program, solidRes.locs, 0.35, 0.15, 0.4, 16, [0.35, 0.35, 0.35, 1.0]);
     this.crtCone.setParent(this);
     this.crtCone.shininess = 80.0;
@@ -297,39 +101,37 @@ class Television extends Node {
     this.crtNeck.specularStrength = 1.0;
     this.crtNeck.translate([0, -0.275, 0]);
     this.crtNeck.scale([1.0, 1.0, 1.0]);
-    this.crtNeck.rotate(0, [1, 0, 0]);
 
-    // Speaker grille: horizontal bars
-    this.grille = new Wall(gl, solidRes.program, solidRes.locs, [0.1, 0.1, 0.1, 1.0]);
+    // Grille
+    this.grille = new Cube(gl, solidRes.program, solidRes.locs, [0.1, 0.1, 0.1, 1.0]);
     this.grille.setParent(this);
     this.grille.shininess = 80.0;
     this.grille.specularStrength = 1.0;
     this.grille.translate([0.5, 0.8, 0.53]);
     this.grille.scale([0.2, 0.2, 0.01]);
 
-    // Antenna base
+    // Antenna
     this.antennaBase = new Sphere(gl, solidRes.program, solidRes.locs, 0.08, 12, 12, [0.3, 0.3, 0.3, 1.0]);
     this.antennaBase.setParent(this);
     this.antennaBase.shininess = 80.0;
     this.antennaBase.specularStrength = 1.0;
     this.antennaBase.translate([0.0, 1.74, 0.0]);
 
-    // Antenna rods (V-shape)
     this.rodLeft = new Cylinder(gl, solidRes.program, solidRes.locs, 0.012, 0.012, 0.8, 8, [0.7, 0.7, 0.7, 1.0]);
     this.rodLeft.setParent(this);
     this.rodLeft.shininess = 80.0;
     this.rodLeft.specularStrength = 1.0;
     this.rodLeft.translate([-0.25, 2.05, 0.0]);
-    this.rodLeft.rotate(Math.PI / 6, [0, 0, 1]); // Tilt left
+    this.rodLeft.rotate(Math.PI / 6, [0, 0, 1]);
 
     this.rodRight = new Cylinder(gl, solidRes.program, solidRes.locs, 0.012, 0.012, 0.8, 8, [0.7, 0.7, 0.7, 1.0]);
     this.rodRight.setParent(this);
     this.rodRight.shininess = 80.0;
     this.rodRight.specularStrength = 1.0;
     this.rodRight.translate([0.25, 2.05, 0.0]);
-    this.rodRight.rotate(-Math.PI / 6, [0, 0, 1]); // Tilt right
+    this.rodRight.rotate(-Math.PI / 6, [0, 0, 1]);
 
-    // Legs: Four legs starting at Y = 0 to Y = 0.4
+    // Legs
     this.legs = [];
     const legCoords = [
       [-0.6, 0.2, 0.35],
@@ -343,7 +145,6 @@ class Television extends Node {
       leg.shininess = 20.0;
       leg.specularStrength = 0.3;
       leg.translate(coord);
-      // Angle them outward slightly
       const rotZ = coord[0] < 0 ? -0.15 : 0.15;
       const rotX = coord[2] < 0 ? -0.15 : 0.15;
       leg.rotate(rotZ, [0, 0, 1]);
@@ -369,7 +170,6 @@ class Television extends Node {
       this.screen.emissive = this.isOn ? 1.0 : 0.0;
     }
     if (this.isOn) {
-      // Start video playback when TV turns on
       if (this.video && this.video.paused) {
         this.video.play();
       }
@@ -386,12 +186,10 @@ class Television extends Node {
       this.buttonPushTimer = Math.max(0.0, this.buttonPushTimer - deltaTime);
     }
 
-    // Update video texture each frame when TV is on
     if (this.isOn && this.video && this.video.readyState >= this.video.HAVE_CURRENT_DATA) {
       const gl = this._glCache;
       if (gl) {
         gl.bindTexture(gl.TEXTURE_2D, this.videoTexture);
-        // Flip Y so the video is right-side up
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.video);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
@@ -410,62 +208,20 @@ class Television extends Node {
   setTransform(pos, rotY) {
     this.position = pos;
     this.rotation = rotY;
-    // Ensure local matrix is reset for each transform
     this.localMatrix = mat4.create();
     mat4.translate(this.localMatrix, this.localMatrix, pos);
     mat4.rotate(this.localMatrix, this.localMatrix, rotY, [0, 1, 0]);
-    // Cache gl context for video texture updates
     this._glCache = this.gl;
     mat4.scale(this.localMatrix, this.localMatrix, [1, 1, 1]);
   }
 
   getCollisionBounds(houseElevation) {
-    // Total bounding box of the TV setup (scaled by 0.4)
-    const halfWidth = 0.8 * 0.4;
-    const halfDepth = 0.5 * 0.4;
-    const height = 1.7 * 0.4;
-    // excluding antenna rods to let player look above it if needed
-
-    const cos = Math.cos(this.rotation);
-    const sin = Math.sin(this.rotation);
-
-    const corners = [
-      [-halfWidth, 0, -halfDepth],
-      [halfWidth, 0, -halfDepth],
-      [-halfWidth, 0, halfDepth],
-      [halfWidth, 0, halfDepth],
-      [-halfWidth, height, -halfDepth],
-      [halfWidth, height, -halfDepth],
-      [-halfWidth, height, halfDepth],
-      [halfWidth, height, halfDepth]
-    ];
-
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    let minZ = Infinity, maxZ = -Infinity;
-
-    for (const c of corners) {
-      const rx = c[0] * cos + c[2] * sin;
-      const rz = -c[0] * sin + c[2] * cos;
-      const wx = rx + this.position[0];
-      const wy = c[1] + this.position[1] + houseElevation;
-      const wz = rz + this.position[2];
-
-      if (wx < minX) minX = wx;
-      if (wx > maxX) maxX = wx;
-      if (wy < minY) minY = wy;
-      if (wy > maxY) maxY = wy;
-      if (wz < minZ) minZ = wz;
-      if (wz > maxZ) maxZ = wz;
-    }
-
-    return { minX, maxX, minY, maxY, minZ, maxZ };
+    return computeAABBBounds(this.position, this.rotation, 0.8 * 0.4, 0.5 * 0.4, 1.7 * 0.4, houseElevation);
   }
 
   draw(gl, viewProjection, shadowProgramInfo) {
     this.updateWorldMatrix(this.parent ? this.parent.worldMatrix : null);
     this.cabinet.draw(gl, viewProjection, null, shadowProgramInfo);
-    // Draw screen with video texture when on, black texture when off
     if (this.isOn && this.videoTexture) {
       this.screen.draw(gl, viewProjection, this.videoTexture, shadowProgramInfo);
     } else {

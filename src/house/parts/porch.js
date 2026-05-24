@@ -145,37 +145,30 @@ class Porch extends Node {
     this.gl = gl;
     this.solidRes = solidRes;
     this.texRes = texRes;
-    this.outsideTexture = outsideTexture; // Now using the house outside face texture!
+    this.outsideTexture = outsideTexture;
 
-    // --- 1. PORCH DECK PLATFORM (Wood Plank Textured - 90 deg flipped) ---
-    // The deck sits at Y = -2.0 (local house floor height), centered at X = 0, Z = 13.0
-    // Width is exactly 26.0 units to extend to the very edge of the front walls!
     this.deckWidth = 20.2;
     this.deckDepth = 4.0;
     this.deckThickness = 0.2;
 
-    this.deck = new Wall(gl, texRes.program, texRes.locs);
+    // Deck Platform
+    this.deck = new Cube(gl, texRes.program, texRes.locs);
     this.deck.setParent(this);
     this.deck.shininess = 20.0;
     this.deck.specularStrength = 0.3;
 
-    // We rotate the deck 90 degrees around the Y-axis to spin the wood texture,
-    // and swap the X and Z scales so it retains its correct global 26x4 shape!
     this.deck.localMatrix = mat4.create();
     mat4.translate(this.deck.localMatrix, this.deck.localMatrix, [0, -2.0 - this.deckThickness / 2, 13.0 + this.deckDepth / 2]);
     mat4.rotateY(this.deck.localMatrix, this.deck.localMatrix, Math.PI / 2);
     mat4.scale(this.deck.localMatrix, this.deck.localMatrix, [this.deckDepth, this.deckThickness, this.deckWidth]);
-    this.deck.uvScale = [this.deckDepth / 4.0, this.deckWidth / 4.0]; // Flipped & Stretched 2x larger!
+    this.deck.uvScale = [this.deckDepth / 4.0, this.deckWidth / 4.0];
 
-    // --- 1b. PORCH FOUNDATION BASE (Anchors Deck to the Ground - Recessed Inward) ---
-    // Recessed inward by 0.4 units on the left, right, and front edges to create an elegant,
-    // high-end architectural shadow line reveal underneath the deck platform!
+    // Foundation Base
     const baseHeight = 1.3;
-    this.foundation = new Wall(gl, texRes.program, texRes.locs);
+    this.foundation = new Cube(gl, texRes.program, texRes.locs);
     this.foundation.setParent(this);
     this.foundation.shininess = 20.0;
     this.foundation.specularStrength = 0.3;
-    // Flush with house wall at Z = 13.0, extending 3.6 units out to Z = 16.6 (leaves 0.4 front overhang)
     this.foundation.translate([0, -2.0 - this.deckThickness - baseHeight / 2, 13.0 + 3.6 / 2]);
     this.foundation.scale([this.deckWidth - 0.8, baseHeight, this.deckDepth - 0.4]);
     this.foundation.uvScale = [(this.deckWidth - 0.8) / 4.0, baseHeight / 4.0];
@@ -183,41 +176,35 @@ class Porch extends Node {
     this.pillars = [];
     this.steps = [];
 
-    // --- 2. PORCH ROOF CANOPY (Inclined/Sloped and 90 deg flipped) ---
-    // The roof starts at Y = 5.1 at the house wall (Z = 13.0) and declines steeply to Y = 2.6 at the front edge (Z = 18.5)
-    // Height drop of -2.5 over a longer depth of 5.5 units along the Z-axis!
+    // Roof Canopy
     this.roofDepth = 5.5;
     const startY = 5.1;
     const endY = 2.6;
-    const heightDrop = endY - startY; // -2.5
-    // Positive angle rotates the front edge of the roof DOWNWARDS facing the ground
+    const heightDrop = endY - startY;
     const slopeAngle = -Math.atan2(heightDrop, this.roofDepth);
     const roofLength = Math.sqrt(this.roofDepth * this.roofDepth + heightDrop * heightDrop);
 
-    this.roof = new Wall(gl, texRes.program, texRes.locs);
+    this.roof = new Cube(gl, texRes.program, texRes.locs);
     this.roof.setParent(this);
     this.roof.shininess = 20.0;
     this.roof.specularStrength = 0.3;
 
-    // Position it centered along the diagonal slope, sliding 0.25 units into the wall to close the gap completely.
-    // We rotate it 90 degrees around Y to spin the texture 90 degrees, and swap X and Z scales!
-    const midY = (startY + endY) / 2; // Y = 3.85
-    const midZ = 12.75 + this.roofDepth / 2; // Z = 15.5
+    const midY = (startY + endY) / 2;
+    const midZ = 12.75 + this.roofDepth / 2;
 
     this.roof.localMatrix = mat4.create();
     mat4.translate(this.roof.localMatrix, this.roof.localMatrix, [0, midY, midZ]);
     mat4.rotateX(this.roof.localMatrix, this.roof.localMatrix, slopeAngle);
     mat4.rotateY(this.roof.localMatrix, this.roof.localMatrix, Math.PI / 2);
     mat4.scale(this.roof.localMatrix, this.roof.localMatrix, [roofLength, 0.15, this.deckWidth]);
-    this.roof.uvScale = [roofLength / 4.0, this.deckWidth / 4.0]; // Flipped & Stretched 2x larger!
+    this.roof.uvScale = [roofLength / 4.0, this.deckWidth / 4.0];
 
-    // --- 3. TWO VERTICAL PILLARS (Rotated Wood Grain Column Mesh) ---
-    // Shifted inward from the extreme outer edges to create a beautifully cantilevered porch.
+    // Pillars
     const pillarHeight = 5.50;
     const pillarThickness = 0.40;
     const pillarPositions = [
-      [-8.0, 16.0], // Inset Front-Left Column
-      [8.0, 16.0],  // Inset Front-Right Column
+      [-8.0, 16.0],
+      [8.0, 16.0],
     ];
 
     pillarPositions.forEach(pos => {
@@ -231,7 +218,7 @@ class Porch extends Node {
       this.pillars.push(col);
     });
 
-    // --- 4. BUILD THE STEPS (Solid and gap-free side profile) ---
+    // Steps
     this.steps = new Stairs(gl, texRes, 5.0, 1.5, 3, 0.5, 0.4);
     this.steps.setParent(this);
     this.steps.translate([0, 0, 17.0]);

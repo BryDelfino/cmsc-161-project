@@ -67,16 +67,16 @@ class Lightswitch extends Node {
     const h = this.height;
     const t = this.thickness;
 
-    // 1. Backplate: Brushed metal color
-    const plate = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.8, 0.8, 0.8, 1.0]);
+    // Backplate
+    const plate = new Cube(gl, this.solidRes.program, this.solidRes.locs, [0.8, 0.8, 0.8, 1.0]);
     plate.setParent(this);
     plate.scale([w, h, t]);
     plate.shininess = 80.0;
     plate.specularStrength = 1.0;
     this.solidMeshes.push(plate);
 
-    // Inner dark grey border insert for visual depth
-    const border = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.35, 0.35, 0.35, 1.0]);
+    // Border insert
+    const border = new Cube(gl, this.solidRes.program, this.solidRes.locs, [0.35, 0.35, 0.35, 1.0]);
     border.setParent(this);
     border.translate([0, 0, t / 2 + 0.001]);
     border.scale([w - 0.03, h - 0.03, 0.005]);
@@ -84,17 +84,16 @@ class Lightswitch extends Node {
     border.specularStrength = 0.5;
     this.solidMeshes.push(border);
 
-    // 2. Rocker Switch Button (animates via localMatrix in update)
-    this.rockerMesh = new Wall(gl, this.solidRes.program, this.solidRes.locs, [0.95, 0.95, 0.95, 1.0]);
+    // Rocker Switch Button
+    this.rockerMesh = new Cube(gl, this.solidRes.program, this.solidRes.locs, [0.95, 0.95, 0.95, 1.0]);
     this.rockerMesh.setParent(this);
-    // Initial placement on the front surface
     this.rockerMesh.translate([0, 0, t / 2]);
     this.rockerMesh.scale([0.06, 0.12, 0.03]);
     this.rockerMesh.shininess = 50.0;
     this.rockerMesh.specularStrength = 0.8;
     this.solidMeshes.push(this.rockerMesh);
 
-    // 3. Status LED (glowing sphere near the top edge)
+    // Status LED
     const ledColor = this.isOn ? [0.2, 0.9, 0.2, 1.0] : [0.9, 0.2, 0.2, 1.0];
     this.ledMesh = new Sphere(gl, this.solidRes.program, this.solidRes.locs, 0.015, 8, 8, ledColor);
     this.ledMesh.setParent(this);

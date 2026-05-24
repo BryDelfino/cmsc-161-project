@@ -3,36 +3,31 @@ class Stairs extends Node {
     super();
     this.steps = [];
 
-    const stepHeight = totalHeight / stepCount; // 0.50 units per step for 3 steps
-    const bottomY = -2.0 - totalHeight;        // ground level (-3.5 local to house)
+    const stepHeight = totalHeight / stepCount;
+    const bottomY = -2.0 - totalHeight;
 
     for (let i = 0; i < stepCount; i++) {
-      const step = new Wall(gl, texRes.program, texRes.locs);
+      const step = new Cube(gl, texRes.program, texRes.locs);
       step.setParent(this);
       step.shininess = 20.0;
       step.specularStrength = 0.3;
 
-      // To fill the gaps on the side, we extend each step's height all the way down to bottomY
-      // We offset the highest step (i === 0) by a tiny fraction (-0.01) to prevent Z-fighting with the deck/floor
       const topYOffset = (i === 0) ? -0.01 : 0.0;
-      const topY = -2.0 - i * stepHeight + topYOffset; // -2.01 (Step 1), -2.5 (Step 2), -3.0 (Step 3)
-      const h = topY - bottomY;                 // 1.49, 1.0, 0.5
-
-      // Extend the highest step backwards if backOverlap is specified to fill any gaps under overhangs
+      const topY = -2.0 - i * stepHeight + topYOffset;
+      const h = topY - bottomY;
       const currentDepth = (i === 0) ? (stepDepth + backOverlap) : stepDepth;
 
       let sZ;
       if (i === 0) {
-        sZ = -backOverlap + currentDepth / 2; // Shift center forward by half of the added depth
+        sZ = -backOverlap + currentDepth / 2;
       } else {
         sZ = i * stepDepth + stepDepth / 2;
       }
 
-      const sY = bottomY + h / 2;               // -2.75, -3.0, -3.25
+      const sY = bottomY + h / 2;
 
       step.translate([0, sY, sZ]);
       step.scale([stepWidth, h, currentDepth]);
-      // Tile textures nicely based on step scale
       step.uvScale = [stepWidth / 4.0, h / 4.0];
       this.steps.push(step);
     }
@@ -58,144 +53,6 @@ class Stairs extends Node {
   }
 }
 
-// Helper to generate sphere vertex attributes for WebGL (Position + UV + Normal format)
-function createSphereGeometry(gl, radius, latitudeBands, longitudeBands) {
-  const vertexData = [];
-  const indexData = [];
-
-  for (let latNumber = 0; latNumber <= latitudeBands; latNumber++) {
-    const theta = latNumber * Math.PI / latitudeBands;
-    const sinTheta = Math.sin(theta);
-    const cosTheta = Math.cos(theta);
-
-    for (let longNumber = 0; longNumber <= longitudeBands; longNumber++) {
-      const phi = longNumber * 2 * Math.PI / longitudeBands;
-      const sinPhi = Math.sin(phi);
-      const cosPhi = Math.cos(phi);
-
-      const x = cosPhi * sinTheta;
-      const y = cosTheta;
-      const z = sinPhi * sinTheta;
-      const u = 1 - (longNumber / longitudeBands);
-      const v = 1 - (latNumber / latitudeBands);
-
-      // Stride: X, Y, Z, W, U, V, NX, NY, NZ
-      vertexData.push(x * radius, y * radius, z * radius, 1.0, u, v, x, y, z);
-    }
-  }
-
-  for (let latNumber = 0; latNumber < latitudeBands; latNumber++) {
-    for (let longNumber = 0; longNumber < longitudeBands; longNumber++) {
-      const first = (latNumber * (longitudeBands + 1)) + longNumber;
-      const second = first + longitudeBands + 1;
-      indexData.push(first, second, first + 1);
-      indexData.push(second, second + 1, first + 1);
-    }
-  }
-
-  const vbuf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
-
-  const ibuf = gl.createBuffer();
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibuf);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
-
-  return {
-    vbuf: vbuf,
-    ibuf: ibuf,
-    count: indexData.length
-  };
-}
-
-class Sphere extends Node {
-  constructor(gl, program, locs, radius, latBands = 16, longBands = 16, color = [0.4, 0.25, 0.15, 1.0]) {
-    super();
-    this.program = program;
-    this.locs = locs;
-    this.color = color;
-    this.mesh = createSphereGeometry(gl, radius, latBands, longBands);
-    this.shininess = 1.0;
-    this.specularStrength = 0.0;
-    this.emissive = 0.0;
-    this.twoSided = 0.0;
-  }
-
-  draw(gl, viewProjection, texture, shadowProgramInfo) {
-    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
-      shadowProgramInfo = texture;
-      texture = null;
-    }
-    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
-    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
-    if (!program) return;
-    gl.useProgram(program);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
-    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
-    gl.enableVertexAttribArray(locs.pos);
-
-    if (!shadowProgramInfo) {
-      if (locs.uv !== undefined && locs.uv !== -1) {
-        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
-        gl.enableVertexAttribArray(locs.uv);
-      }
-
-      if (locs.normal !== undefined && locs.normal !== -1) {
-        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
-        gl.enableVertexAttribArray(locs.normal);
-      }
-    }
-
-    const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
-    gl.uniformMatrix4fv(locs.matrix, false, mvp);
-
-    if (!shadowProgramInfo) {
-      if (locs.worldMatrix) {
-        gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
-      }
-      if (locs.worldInverseTranspose) {
-        const normalMatrix = mat4.create();
-        mat4.invert(normalMatrix, this.worldMatrix);
-        mat4.transpose(normalMatrix, normalMatrix);
-        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
-      }
-      if (locs.shininess) {
-        gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
-      }
-      if (locs.specularStrength) {
-        gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
-      }
-      if (locs.emissive) {
-        gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
-      }
-      if (locs.twoSided) {
-        gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
-      }
-
-      if (locs.tex && texture) {
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.uniform1i(locs.tex, 0);
-
-        if (locs.uvScale) {
-          gl.uniform2fv(locs.uvScale, [1.0, 1.0]);
-        }
-        if (locs.uvOffset) {
-          gl.uniform2fv(locs.uvOffset, [0.0, 0.0]);
-        }
-      }
-
-      if (locs.color) {
-        gl.uniform4fv(locs.color, this.color);
-      }
-    }
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
-    gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
-  }
-}
-
 class InteriorStairs extends Node {
   constructor(gl, solidRes, texRes, length = 8.5, stepWidth = 4.5, stepCount = 14) {
     super();
@@ -209,43 +66,39 @@ class InteriorStairs extends Node {
     const totalHeight = 7.0;
     const stepDepth = length / stepCount;
     const stepHeight = totalHeight / stepCount;
-    const bottomY = -2.0; // Starts at floor level (-2.0 local to house)
+    const bottomY = -2.0;
 
-    this.steps = [];  // risers (solid base blocks, used for collision and visuals)
-    this.treads = []; // treads (visual only)
-    this.sidePlates = []; // wallpapered side plates (stringer covering open side)
+    this.steps = [];
+    this.treads = [];
+    this.sidePlates = [];
     this.posts = [];
     this.rail = null;
     this.newelPost = null;
     this.newelSphere = null;
-    this.baseboards = []; // skirting lining segments
+    this.baseboards = [];
 
-    // Solid minty green color: rgb(148, 196, 170)
     const greenColor = [148 / 255, 196 / 255, 170 / 255, 1.0];
-
-    // --- 1. BUILD THE STEPS (Split into green solid treads and recessed solid green risers) ---
     const treadThickness = 0.05;
-    const riserWidth = stepWidth - 0.2;     // Recessed inward by 0.1 on each side
-    const riserDepth = stepDepth - 0.06;    // Recessed inward to leave a front overhang
+    const riserWidth = stepWidth - 0.2;
+    const riserDepth = stepDepth - 0.06;
 
     for (let i = 0; i < stepCount; i++) {
-      const topY = bottomY + (i + 1) * stepHeight; // e.g. -1.5, -1.0, ..., 5.0
-      const h = topY - bottomY;                   // Height from floor: 0.5, 1.0, ..., 7.0
-      const sY = bottomY + h / 2;                 // Center Y position
-      const sZ = i * stepDepth + stepDepth / 2;   // Center Z position
+      const topY = bottomY + (i + 1) * stepHeight;
+      const h = topY - bottomY;
+      const sY = bottomY + h / 2;
+      const sZ = i * stepDepth + stepDepth / 2;
 
-      // Riser Solid Block (Fully visual & walkable, solid green color, recessed inward)
-      const riser = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
+      // Riser
+      const riser = new Cube(gl, solidRes.program, solidRes.locs, greenColor);
       riser.setParent(this);
       riser.shininess = 20.0;
       riser.specularStrength = 0.3;
-      riser.translate([0, sY, sZ - 0.03]); // Shifted slightly back for front nose overhang
+      riser.translate([0, sY, sZ - 0.03]);
       riser.scale([riserWidth, h, riserDepth]);
       this.steps.push(riser);
 
-      // Side Riser Plate (Overlayed on the open side local X = stepWidth / 2 + 0.001 to show seamless wallpaper)
-      // Standardizes the texture coordinates (U along Z, V along Y) to align perfectly with the background wallpaper.
-      const sidePlate = new Wall(gl, texRes.program, texRes.locs);
+      // Side plate
+      const sidePlate = new Cube(gl, texRes.program, texRes.locs);
       sidePlate.setParent(this);
       sidePlate.translate([stepWidth / 2 + 0.001, sY, sZ]);
       sidePlate.scale([0.01, h, stepDepth]);
@@ -253,51 +106,49 @@ class InteriorStairs extends Node {
       sidePlate.uvOffset = [(9.5 - sZ) / 2.0, h / 4.0];
       this.sidePlates.push(sidePlate);
 
-      // Tread (Visual only, sits on top, solid green color)
-      const tread = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
+      // Tread
+      const tread = new Cube(gl, solidRes.program, solidRes.locs, greenColor);
       tread.setParent(this);
       tread.shininess = 20.0;
       tread.specularStrength = 0.3;
       tread.translate([0, topY + treadThickness / 2, sZ]);
-      tread.scale([stepWidth + 0.02, treadThickness, stepDepth + 0.02]); // slightly overhangs for realism!
+      tread.scale([stepWidth + 0.02, treadThickness, stepDepth + 0.02]);
       this.treads.push(tread);
     }
 
-    // --- 2. NEWEL POST (Rectangular column + Sphere) ---
+    // Newel Post
     const newelX = stepWidth / 2 - 0.15;
     const newelHeight = 2.2;
     const newelZ = stepDepth / 2;
 
-    this.newelPost = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
+    this.newelPost = new Cube(gl, solidRes.program, solidRes.locs, greenColor);
     this.newelPost.setParent(this);
     this.newelPost.shininess = 20.0;
     this.newelPost.specularStrength = 0.3;
     this.newelPost.translate([newelX, bottomY + newelHeight / 2, newelZ]);
     this.newelPost.scale([0.22, newelHeight, 0.22]);
 
-    // Sphere on top of Newel Post
     this.newelSphere = new Sphere(gl, solidRes.program, solidRes.locs, 0.18, 16, 16, greenColor);
     this.newelSphere.setParent(this);
     this.newelSphere.shininess = 20.0;
     this.newelSphere.specularStrength = 0.3;
     this.newelSphere.translate([newelX, bottomY + newelHeight + 0.12, newelZ]);
 
-    // --- 4. HANDRAIL CALCULATIONS ---
+    // Handrail calculations
     const dy = (bottomY + totalHeight + 2.0) - (bottomY + newelHeight);
     const dz = length - newelZ;
     const slopeAngle = Math.atan2(dy, dz);
     const railLength = Math.sqrt(dy * dy + dz * dz);
 
-    // --- 3. BALUSTERS (Vertical support posts on EVERY step) ---
+    // Balusters
     for (let i = 1; i < stepCount; i++) {
       const stepTopY = bottomY + (i + 1) * stepHeight;
       const stepZ = i * stepDepth + stepDepth / 2;
-
       const railY = (bottomY + newelHeight) + (stepZ - newelZ) * (dy / dz);
       const balusterHeight = railY - stepTopY;
 
       if (balusterHeight > 0.05) {
-        const post = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
+        const post = new Cube(gl, solidRes.program, solidRes.locs, greenColor);
         post.setParent(this);
         post.shininess = 20.0;
         post.specularStrength = 0.3;
@@ -307,8 +158,8 @@ class InteriorStairs extends Node {
       }
     }
 
-    // --- 4. BUILD THE HANDRAIL ---
-    this.rail = new Wall(gl, solidRes.program, solidRes.locs, greenColor);
+    // Handrail
+    this.rail = new Cube(gl, solidRes.program, solidRes.locs, greenColor);
     this.rail.setParent(this);
     this.rail.shininess = 20.0;
     this.rail.specularStrength = 0.3;
@@ -321,11 +172,10 @@ class InteriorStairs extends Node {
     mat4.rotateX(this.rail.localMatrix, this.rail.localMatrix, -slopeAngle);
     mat4.scale(this.rail.localMatrix, this.rail.localMatrix, [0.12, 0.08, railLength]);
 
-    // --- 5. BASEBOARD / SKIRTING BOARD (Brown lining along floor at base of stairs side) ---
+    // Baseboards
     const baseboardColor = [0.4, 0.25, 0.15, 1.0];
 
-    // First step lining: Shorter height (0.35) so it stays below the first step tread
-    const baseboard1 = new Wall(gl, solidRes.program, solidRes.locs, baseboardColor);
+    const baseboard1 = new Cube(gl, solidRes.program, solidRes.locs, baseboardColor);
     baseboard1.setParent(this);
     baseboard1.shininess = 20.0;
     baseboard1.specularStrength = 0.3;
@@ -333,8 +183,7 @@ class InteriorStairs extends Node {
     baseboard1.scale([0.12, 0.72, stepDepth]);
     this.baseboards.push(baseboard1);
 
-    // Remaining steps lining: Standard height (0.7)
-    const baseboard2 = new Wall(gl, solidRes.program, solidRes.locs, baseboardColor);
+    const baseboard2 = new Cube(gl, solidRes.program, solidRes.locs, baseboardColor);
     baseboard2.setParent(this);
     baseboard2.shininess = 20.0;
     baseboard2.specularStrength = 0.3;
