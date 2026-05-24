@@ -76,7 +76,7 @@ const solidFragmentShaderSource = `
   // Lighting uniforms
   uniform vec3 u_viewPosition;
   
-  // Ambient directional light (pointing to south wall)
+  // Ambient directional light
   uniform vec3 u_ambientLightDir;
   uniform vec3 u_ambientLightColor;
   
@@ -238,7 +238,7 @@ const texFragmentShaderSource = `
   // Lighting uniforms
   uniform vec3 u_viewPosition;
   
-  // Ambient directional light (pointing to south wall)
+  // Ambient directional light
   uniform vec3 u_ambientLightDir;
   uniform vec3 u_ambientLightColor;
   
