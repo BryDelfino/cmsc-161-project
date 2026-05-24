@@ -179,3 +179,511 @@ class TexturedMeshNode extends Node {
     gl.drawArrays(gl.TRIANGLES, 0, this.meshInfo.count);
   }
 }
+
+class Cube extends MeshNode {
+  constructor(gl, program, locs, color = [0.8, 0.7, 0.5, 1.0]) {
+    super({ program, locs, color });
+    this.program = program;
+    this.locs = locs;
+    this.color = color;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
+
+    const vertices = new Float32Array([
+      // Front
+      -0.5, -0.5,  0.5, 1,  0, 0,  0, 0, 1,
+       0.5, -0.5,  0.5, 1,  1, 0,  0, 0, 1,
+       0.5,  0.5,  0.5, 1,  1, 1,  0, 0, 1,
+      -0.5,  0.5,  0.5, 1,  0, 1,  0, 0, 1,
+      // Back
+      -0.5, -0.5, -0.5, 1,  0, 0,  0, 0, -1,
+      -0.5,  0.5, -0.5, 1,  0, 1,  0, 0, -1,
+       0.5,  0.5, -0.5, 1,  1, 1,  0, 0, -1,
+       0.5, -0.5, -0.5, 1,  1, 0,  0, 0, -1,
+      // Top
+      -0.5,  0.5, -0.5, 1,  0, 0,  0, 1, 0,
+      -0.5,  0.5,  0.5, 1,  0, 1,  0, 1, 0,
+       0.5,  0.5,  0.5, 1,  1, 1,  0, 1, 0,
+       0.5,  0.5, -0.5, 1,  1, 0,  0, 1, 0,
+      // Bottom
+      -0.5, -0.5, -0.5, 1,  0, 0,  0, -1, 0,
+       0.5, -0.5, -0.5, 1,  1, 0,  0, -1, 0,
+       0.5, -0.5,  0.5, 1,  1, 1,  0, -1, 0,
+      -0.5, -0.5,  0.5, 1,  0, 1,  0, -1, 0,
+      // Right
+       0.5, -0.5, -0.5, 1,  0, 0,  1, 0, 0,
+       0.5,  0.5, -0.5, 1,  0, 1,  1, 0, 0,
+       0.5,  0.5,  0.5, 1,  1, 1,  1, 0, 0,
+       0.5, -0.5,  0.5, 1,  1, 0,  1, 0, 0,
+      // Left
+      -0.5, -0.5, -0.5, 1,  0, 0, -1, 0, 0,
+      -0.5, -0.5,  0.5, 1,  1, 0, -1, 0, 0,
+      -0.5,  0.5,  0.5, 1,  1, 1, -1, 0, 0,
+      -0.5,  0.5, -0.5, 1,  0, 1, -1, 0, 0,
+    ]);
+
+    const indices = new Uint16Array([
+      0, 1, 2, 0, 2, 3,
+      4, 5, 6, 4, 6, 7,
+      8, 9, 10, 8, 10, 11,
+      12, 13, 14, 12, 14, 15,
+      16, 17, 18, 16, 18, 19,
+      20, 21, 22, 20, 22, 23,
+    ]);
+
+    this.mesh = {
+      vbuf: gl.createBuffer(),
+      ibuf: gl.createBuffer(),
+      count: indices.length,
+    };
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+  }
+
+  draw(gl, viewProjection, texture, shadowProgramInfo) {
+    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
+      shadowProgramInfo = texture;
+      texture = null;
+    }
+    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
+    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
+
+    if (!program) return;
+    gl.useProgram(program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
+    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(locs.pos);
+    
+    if (!shadowProgramInfo) {
+      if (locs.uv !== undefined && locs.uv !== -1) {
+        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
+        gl.enableVertexAttribArray(locs.uv);
+      }
+      if (locs.tex && texture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(locs.tex, 0);
+        if (locs.uvScale) {
+          gl.uniform2fv(locs.uvScale, this.uvScale || [1.0, 1.0]);
+        }
+        if (locs.uvOffset) {
+          gl.uniform2fv(locs.uvOffset, this.uvOffset || [0.0, 0.0]);
+        }
+      }
+      if (locs.normal !== undefined && locs.normal !== -1) {
+        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
+        gl.enableVertexAttribArray(locs.normal);
+      }
+    }
+
+    const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
+    gl.uniformMatrix4fv(locs.matrix, false, mvp);
+
+    if (!shadowProgramInfo) {
+      if (locs.worldMatrix) gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
+      if (locs.worldInverseTranspose) {
+        const normalMatrix = mat4.create();
+        mat4.invert(normalMatrix, this.worldMatrix);
+        mat4.transpose(normalMatrix, normalMatrix);
+        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
+      }
+      if (locs.shininess) gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+      if (locs.specularStrength) gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+      if (locs.emissive) gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+      if (locs.twoSided) gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+      if (locs.color) gl.uniform4fv(locs.color, this.color);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+}
+
+function createSphereGeometry(gl, radius, latitudeBands, longitudeBands) {
+  const vertexData = [];
+  const indexData = [];
+
+  for (let latNumber = 0; latNumber <= latitudeBands; latNumber++) {
+    const theta = latNumber * Math.PI / latitudeBands;
+    const sinTheta = Math.sin(theta);
+    const cosTheta = Math.cos(theta);
+
+    for (let longNumber = 0; longNumber <= longitudeBands; longNumber++) {
+      const phi = longNumber * 2 * Math.PI / longitudeBands;
+      const sinPhi = Math.sin(phi);
+      const cosPhi = Math.cos(phi);
+
+      const x = cosPhi * sinTheta;
+      const y = cosTheta;
+      const z = sinPhi * sinTheta;
+      const u = 1 - (longNumber / longitudeBands);
+      const v = 1 - (latNumber / latitudeBands);
+
+      vertexData.push(x * radius, y * radius, z * radius, 1.0, u, v, x, y, z);
+    }
+  }
+
+  for (let latNumber = 0; latNumber < latitudeBands; latNumber++) {
+    for (let longNumber = 0; longNumber < longitudeBands; longNumber++) {
+      const first = (latNumber * (longitudeBands + 1)) + longNumber;
+      const second = first + longitudeBands + 1;
+      indexData.push(first, second, first + 1);
+      indexData.push(second, second + 1, first + 1);
+    }
+  }
+
+  const vbuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
+
+  const ibuf = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibuf);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+
+  return { vbuf, ibuf, count: indexData.length };
+}
+
+class Sphere extends Node {
+  constructor(gl, program, locs, radius, latBands = 16, longBands = 16, color = [0.4, 0.25, 0.15, 1.0]) {
+    super();
+    this.program = program;
+    this.locs = locs;
+    this.color = color;
+    this.mesh = createSphereGeometry(gl, radius, latBands, longBands);
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
+  }
+
+  draw(gl, viewProjection, texture, shadowProgramInfo) {
+    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
+      shadowProgramInfo = texture;
+      texture = null;
+    }
+    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
+    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
+    if (!program) return;
+    gl.useProgram(program);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
+    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(locs.pos);
+
+    if (!shadowProgramInfo) {
+      if (locs.uv !== undefined && locs.uv !== -1) {
+        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
+        gl.enableVertexAttribArray(locs.uv);
+      }
+      if (locs.normal !== undefined && locs.normal !== -1) {
+        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
+        gl.enableVertexAttribArray(locs.normal);
+      }
+    }
+
+    const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
+    gl.uniformMatrix4fv(locs.matrix, false, mvp);
+
+    if (!shadowProgramInfo) {
+      if (locs.worldMatrix) gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
+      if (locs.worldInverseTranspose) {
+        const normalMatrix = mat4.create();
+        mat4.invert(normalMatrix, this.worldMatrix);
+        mat4.transpose(normalMatrix, normalMatrix);
+        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
+      }
+      if (locs.shininess) gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+      if (locs.specularStrength) gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+      if (locs.emissive) gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+      if (locs.twoSided) gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+      if (locs.tex && texture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(locs.tex, 0);
+        if (locs.uvScale) gl.uniform2fv(locs.uvScale, [1.0, 1.0]);
+        if (locs.uvOffset) gl.uniform2fv(locs.uvOffset, [0.0, 0.0]);
+      }
+      if (locs.color) gl.uniform4fv(locs.color, this.color);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+}
+
+function createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments) {
+  const vertexData = [];
+  const indexData = [];
+  const drdy = (radiusTop - radiusBottom) / height;
+
+  for (let i = 0; i <= radialSegments; i++) {
+    const angle = (i / radialSegments) * 2 * Math.PI;
+    const sin = Math.sin(angle);
+    const cos = Math.cos(angle);
+    const u = i / radialSegments;
+    const len = Math.sqrt(cos * cos + drdy * drdy + sin * sin);
+    const nx = cos / len;
+    const ny = -drdy / len;
+    const nz = sin / len;
+
+    vertexData.push(cos * radiusTop, height / 2, sin * radiusTop, 1.0, u, 1.0, nx, ny, nz);
+    vertexData.push(cos * radiusBottom, -height / 2, sin * radiusBottom, 1.0, u, 0.0, nx, ny, nz);
+  }
+
+  for (let i = 0; i < radialSegments; i++) {
+    const idxTopCurrent = i * 2;
+    const idxBotCurrent = i * 2 + 1;
+    const idxTopNext = (i + 1) * 2;
+    const idxBotNext = (i + 1) * 2 + 1;
+    indexData.push(idxTopCurrent, idxBotCurrent, idxBotNext);
+    indexData.push(idxTopCurrent, idxBotNext, idxTopNext);
+  }
+
+  const capStartIdx = vertexData.length / 9;
+  vertexData.push(0, height / 2, 0, 1.0, 0.5, 0.5, 0, 1, 0);
+  for (let i = 0; i <= radialSegments; i++) {
+    const angle = (i / radialSegments) * 2 * Math.PI;
+    const sin = Math.sin(angle);
+    const cos = Math.cos(angle);
+    vertexData.push(cos * radiusTop, height / 2, sin * radiusTop, 1.0, (cos + 1) / 2, (sin + 1) / 2, 0, 1, 0);
+  }
+  for (let i = 0; i < radialSegments; i++) {
+    indexData.push(capStartIdx, capStartIdx + 1 + i, capStartIdx + 2 + i);
+  }
+
+  const botCapStartIdx = vertexData.length / 9;
+  vertexData.push(0, -height / 2, 0, 1.0, 0.5, 0.5, 0, -1, 0);
+  for (let i = 0; i <= radialSegments; i++) {
+    const angle = (i / radialSegments) * 2 * Math.PI;
+    const sin = Math.sin(angle);
+    const cos = Math.cos(angle);
+    vertexData.push(cos * radiusBottom, -height / 2, sin * radiusBottom, 1.0, (cos + 1) / 2, (sin + 1) / 2, 0, -1, 0);
+  }
+  for (let i = 0; i < radialSegments; i++) {
+    indexData.push(botCapStartIdx, botCapStartIdx + 2 + i, botCapStartIdx + 1 + i);
+  }
+
+  const vbuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
+
+  const ibuf = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibuf);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+
+  return { vbuf, ibuf, count: indexData.length };
+}
+
+class Cylinder extends Node {
+  constructor(gl, program, locs, radiusTop, radiusBottom, height, radialSegments = 16, color = [0.8, 0.7, 0.5, 1.0]) {
+    super();
+    this.program = program;
+    this.locs = locs;
+    this.color = color;
+    this.mesh = createCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments);
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
+  }
+
+  draw(gl, viewProjection, texture, shadowProgramInfo) {
+    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
+      shadowProgramInfo = texture;
+      texture = null;
+    }
+    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
+    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
+    if (!program) return;
+    gl.useProgram(program);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
+    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(locs.pos);
+
+    if (!shadowProgramInfo) {
+      if (locs.uv !== undefined && locs.uv !== -1) {
+        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
+        gl.enableVertexAttribArray(locs.uv);
+      }
+      if (locs.normal !== undefined && locs.normal !== -1) {
+        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
+        gl.enableVertexAttribArray(locs.normal);
+      }
+    }
+
+    const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
+    gl.uniformMatrix4fv(locs.matrix, false, mvp);
+
+    if (!shadowProgramInfo) {
+      if (locs.worldMatrix) gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
+      if (locs.worldInverseTranspose) {
+        const normalMatrix = mat4.create();
+        mat4.invert(normalMatrix, this.worldMatrix);
+        mat4.transpose(normalMatrix, normalMatrix);
+        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
+      }
+      if (locs.shininess) gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+      if (locs.specularStrength) gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+      if (locs.emissive) gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+      if (locs.twoSided) gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+      if (locs.tex && texture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(locs.tex, 0);
+        if (locs.uvScale) gl.uniform2fv(locs.uvScale, this.uvScale || [1.0, 1.0]);
+        if (locs.uvOffset) gl.uniform2fv(locs.uvOffset, this.uvOffset || [0.0, 0.0]);
+      }
+      if (locs.color) gl.uniform4fv(locs.color, this.color);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+}
+
+function createHollowCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments) {
+  const vertexData = [];
+  const indexData = [];
+  const drdy = (radiusTop - radiusBottom) / height;
+
+  for (let i = 0; i <= radialSegments; i++) {
+    const angle = (i / radialSegments) * 2 * Math.PI;
+    const sin = Math.sin(angle);
+    const cos = Math.cos(angle);
+    const u = i / radialSegments;
+    const len = Math.sqrt(cos * cos + drdy * drdy + sin * sin);
+    const nx = cos / len;
+    const ny = -drdy / len;
+    const nz = sin / len;
+
+    vertexData.push(cos * radiusTop, height / 2, sin * radiusTop, 1.0, u, 1.0, nx, ny, nz);
+    vertexData.push(cos * radiusBottom, -height / 2, sin * radiusBottom, 1.0, u, 0.0, nx, ny, nz);
+  }
+
+  for (let i = 0; i < radialSegments; i++) {
+    const idxTopCurrent = i * 2;
+    const idxBotCurrent = i * 2 + 1;
+    const idxTopNext = (i + 1) * 2;
+    const idxBotNext = (i + 1) * 2 + 1;
+
+    indexData.push(idxTopCurrent, idxBotCurrent, idxBotNext);
+    indexData.push(idxTopCurrent, idxBotNext, idxTopNext);
+    indexData.push(idxTopCurrent, idxBotNext, idxBotCurrent);
+    indexData.push(idxTopCurrent, idxTopNext, idxBotNext);
+  }
+
+  const vbuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
+
+  const ibuf = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibuf);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
+
+  return { vbuf, ibuf, count: indexData.length };
+}
+
+class HollowCylinder extends Node {
+  constructor(gl, program, locs, radiusTop, radiusBottom, height, radialSegments = 16, color = [0.8, 0.7, 0.5, 1.0]) {
+    super();
+    this.program = program;
+    this.locs = locs;
+    this.color = color;
+    this.mesh = createHollowCylinderGeometry(gl, radiusTop, radiusBottom, height, radialSegments);
+    this.shininess = 1.0;
+    this.specularStrength = 0.0;
+    this.emissive = 0.0;
+    this.twoSided = 0.0;
+  }
+
+  draw(gl, viewProjection, texture, shadowProgramInfo) {
+    if (texture && typeof texture === 'object' && texture.program && texture.locs) {
+      shadowProgramInfo = texture;
+      texture = null;
+    }
+    const program = shadowProgramInfo ? shadowProgramInfo.program : this.program;
+    const locs = shadowProgramInfo ? shadowProgramInfo.locs : this.locs;
+    if (!program) return;
+    gl.useProgram(program);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.mesh.vbuf);
+    gl.vertexAttribPointer(locs.pos, 4, gl.FLOAT, false, 36, 0);
+    gl.enableVertexAttribArray(locs.pos);
+
+    if (!shadowProgramInfo) {
+      if (locs.uv !== undefined && locs.uv !== -1) {
+        gl.vertexAttribPointer(locs.uv, 2, gl.FLOAT, false, 36, 16);
+        gl.enableVertexAttribArray(locs.uv);
+      }
+      if (locs.normal !== undefined && locs.normal !== -1) {
+        gl.vertexAttribPointer(locs.normal, 3, gl.FLOAT, false, 36, 24);
+        gl.enableVertexAttribArray(locs.normal);
+      }
+    }
+
+    const mvp = mat4.multiply(mat4.create(), viewProjection, this.worldMatrix);
+    gl.uniformMatrix4fv(locs.matrix, false, mvp);
+
+    if (!shadowProgramInfo) {
+      if (locs.worldMatrix) gl.uniformMatrix4fv(locs.worldMatrix, false, this.worldMatrix);
+      if (locs.worldInverseTranspose) {
+        const normalMatrix = mat4.create();
+        mat4.invert(normalMatrix, this.worldMatrix);
+        mat4.transpose(normalMatrix, normalMatrix);
+        gl.uniformMatrix4fv(locs.worldInverseTranspose, false, normalMatrix);
+      }
+      if (locs.shininess) gl.uniform1f(locs.shininess, this.shininess !== undefined ? this.shininess : 1.0);
+      if (locs.specularStrength) gl.uniform1f(locs.specularStrength, this.specularStrength !== undefined ? this.specularStrength : 0.0);
+      if (locs.emissive) gl.uniform1f(locs.emissive, this.emissive !== undefined ? this.emissive : 0.0);
+      if (locs.twoSided) gl.uniform1f(locs.twoSided, this.twoSided !== undefined ? this.twoSided : 0.0);
+      if (locs.tex && texture) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.uniform1i(locs.tex, 0);
+        if (locs.uvScale) gl.uniform2fv(locs.uvScale, this.uvScale || [1.0, 1.0]);
+        if (locs.uvOffset) gl.uniform2fv(locs.uvOffset, this.uvOffset || [0.0, 0.0]);
+      }
+      if (locs.color) gl.uniform4fv(locs.color, this.color);
+    }
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.mesh.ibuf);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+}
+
+function computeAABBBounds(position, rotation, halfWidth, halfDepth, height, houseElevation) {
+  const cos = Math.cos(rotation);
+  const sin = Math.sin(rotation);
+  const corners = [
+    [-halfWidth, 0, -halfDepth],
+    [halfWidth, 0, -halfDepth],
+    [-halfWidth, 0, halfDepth],
+    [halfWidth, 0, halfDepth],
+    [-halfWidth, height, -halfDepth],
+    [halfWidth, height, -halfDepth],
+    [-halfWidth, height, halfDepth],
+    [halfWidth, height, halfDepth]
+  ];
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const c of corners) {
+    const rx = c[0] * cos + c[2] * sin;
+    const rz = -c[0] * sin + c[2] * cos;
+    const wx = rx + position[0];
+    const wy = c[1] + position[1] + houseElevation;
+    const wz = rz + position[2];
+    if (wx < minX) minX = wx;
+    if (wx > maxX) maxX = wx;
+    if (wy < minY) minY = wy;
+    if (wy > maxY) maxY = wy;
+    if (wz < minZ) minZ = wz;
+    if (wz > maxZ) maxZ = wz;
+  }
+  return { minX, maxX, minY, maxY, minZ, maxZ };
+}
+
