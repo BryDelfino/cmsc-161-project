@@ -183,8 +183,8 @@ class RedCouch extends Node {
     // Backrest
     const back = new Cube(gl, solidRes.program, solidRes.locs, redColor);
     back.setParent(this);
-    back.translate([0, 0.55, -0.32]);
-    back.scale([0.8, 0.7, 0.22]);
+    back.translate([0, 0.75, -0.32]);
+    back.scale([0.8, 1.1, 0.22]);
     this.parts.push(back);
 
     this.scale([1.8, 1.8, 1.8]);
@@ -200,7 +200,7 @@ class RedCouch extends Node {
   }
 
   getCollisionBounds(houseElevation) {
-    return computeAABBBounds(this.position, this.rotation, 0.54 * 1.8, 0.45 * 1.8, 0.9 * 1.8, houseElevation);
+    return computeAABBBounds(this.position, this.rotation, 0.54 * 1.8, 0.45 * 1.8, 1.3 * 1.8, houseElevation);
   }
 
   draw(gl, viewProjection, shadowProgramInfo) {
